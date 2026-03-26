@@ -152,14 +152,20 @@ module graphics(
 // --- PART 6: COLOR DECODER ---
     always @(*) begin
         case(final_color_8bit)
-            8'h00: begin VGA_R = 10'd0;   VGA_G = 10'd0;   VGA_B = 10'd0;   end
-            8'hFC: begin VGA_R = 10'd1023; VGA_G = 10'd1023; VGA_B = 10'd1023; end
-            8'hE0: begin VGA_R = 10'd0;   VGA_G = 10'd1023; VGA_B = 10'd0;   end
+            8'h00: begin VGA_R = 10'd0;    VGA_G = 10'd0;    VGA_B = 10'd0;    end // Black
+            8'hFC: begin VGA_R = 10'd1023; VGA_G = 10'd1023; VGA_B = 10'd1023; end // White
+            8'hE0: begin VGA_R = 10'd1023; VGA_G = 10'd0;    VGA_B = 10'd0;    end // HP Fill (Red)
+            
             default: begin 
-                // Conversion from 8-bit (RRRGGGBB) to 10-bit VGA
-                VGA_R = {final_color_8bit[7:5], 7'b0}; 
-                VGA_G = {final_color_8bit[4:2], 7'b0}; 
-                VGA_B = {final_color_8bit[1:0], 8'b0}; 
+                // We take the 3 bits of Red and shift them to the top of 10 bits
+                // Then we repeat the bits to fill the "empty" space so 100% Red stays 100% Red
+                VGA_R = {final_color_8bit[7:5], final_color_8bit[7:5], final_color_8bit[7:5], 1'b0};
+                
+                // Same for Green (3 bits)
+                VGA_G = {final_color_8bit[4:2], final_color_8bit[4:2], final_color_8bit[4:2], 1'b0};
+                
+                // For Blue (only 2 bits), we repeat them more often
+                VGA_B = {final_color_8bit[1:0], final_color_8bit[1:0], final_color_8bit[1:0], final_color_8bit[1:0], final_color_8bit[1:0]};
             end
         endcase
     end
