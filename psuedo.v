@@ -92,13 +92,14 @@ module psuedo();
 
                     if (p1_H_move == 2'b00) p1H_move_state <= IDLE;
                     if (p1_punch_valid) p1H_move_state <= ATTACK_ACTIVE;
-                    if (p1_PowerUp_val) p1H_move_state <= CHARGING;
+                    if (p1_PowerUp_valid) p1H_move_state <= CHARGING;
                 end
 
                 ATTACK_ACTIVE: begin
                     if (p1_punch_valid && collision && !p1_punch_lock) begin
-                        p2_hp <= p2_hp - (p1_punch_val * punch_mul);
+                        p2_hp <= p2_hp - (p1_punch_val * punch_mul * p1_PowerUp_val);
                         p1_punch_lock <= 1;
+                        p1_PowerUp_val <= 1;
                     end
                     else if (p1_kick_valid && collision && !p1_kick_lock) begin
                         p2_hp <= p2_hp - (p1_kick_val * kick_mul);
@@ -112,7 +113,7 @@ module psuedo();
                         if (p1_H_move != 0'b00) p1H_move_state <= MOVING;
                         else p1H_move_state <= IDLE;
                     end
-                    if (p1_PowerUp_val) p1H_move_state <= CHARGING;
+                    if (p1_PowerUp_valid) p1H_move_state <= CHARGING;
                 end
 
                 CHARGING: begin
@@ -131,7 +132,10 @@ module psuedo();
                 ON_GROUND: begin
                     p1_y <= GROUND_Y;
                     p1_V_speed <= 0;
-                    if (p1_jump) p1V_move_state <= JUMPING;
+                    if (p1_jump) begin
+                        p1V_move_state <= JUMPING;
+                        p1_V_speed <= 40;
+                    end
                 end
                 JUMPING, FALLING: begin
                     p1_y <= p1_y + p1_V_speed;   // Update position
