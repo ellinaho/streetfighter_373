@@ -3,7 +3,7 @@ from PIL import Image
 
 # --- Configuration ---
 # Change these variables to match your file names!
-INPUT_IMAGE = "bg.png" 
+INPUT_IMAGE = "background.png" 
 OUTPUT_MIF = "bg_rom.mif"
 
 def rgb_to_rgb332(r, g, b):
