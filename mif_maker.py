@@ -3,35 +3,30 @@ from PIL import Image
 
 # --- Configuration ---
 # Change these variables to match your file names!
-INPUT_IMAGE = "p2.png" 
-OUTPUT_MIF = "p2_rom.mif"
-
-# Pure Magenta for hardware transparency
-TRANSPARENT_COLOR = (255, 0, 255) 
+INPUT_IMAGE = "backdrop.png" 
+OUTPUT_MIF = "backdrop_rom.mif"
 
 def rgb_to_rgb332(r, g, b):
     """
-    Converts standard 24-bit RGB into 8-bit RGB332.
+    Converts standard 24-bit RGB into 8-bit RGB332 using rounding for better color accuracy.
     Format: [R2 R1 R0 G2 G1 G0 B1 B0]
     """
-    # If the pixel is pure magenta, force it to our transparent hex code (FF)
-    if (r, g, b) == TRANSPARENT_COLOR:
-        return "FF"
-        
-    # Bitwise shift to grab the top bits of each color channel
-    r_3bit = (r >> 5) & 0x07
-    g_3bit = (g >> 5) & 0x07
-    b_2bit = (b >> 6) & 0x03
+    # Using rounding instead of bit-shifting prevents colors from getting washed out/darkened.
+    # Red and Green have 3 bits (0 to 7)
+    # Blue has 2 bits (0 to 3)
+    r_3bit = round((r * 7) / 255)
+    g_3bit = round((g * 7) / 255)
+    b_2bit = round((b * 3) / 255)
     
-    # Combine them into a single 8-bit byte
+    # Combine them into a single 8-bit byte using bitwise OR
     color_8bit = (r_3bit << 5) | (g_3bit << 2) | b_2bit
     
-    # Return as a 2-character hexadecimal string (e.g., "A4", "00", "FF")
+    # Return as a 2-character hexadecimal string (e.g., "A4", "E3", "FF")
     return f"{color_8bit:02X}"
 
 def generate_mif():
     try:
-        # Load the image and force it into standard RGB mode (stripping alpha channels)
+        # Load the image and force it into standard RGB mode
         img = Image.open(INPUT_IMAGE).convert("RGB")
     except FileNotFoundError:
         print(f"Error: Could not find '{INPUT_IMAGE}'. Make sure it's in the same folder.")
@@ -48,8 +43,8 @@ def generate_mif():
         # --- Quartus MIF Header ---
         f.write(f"DEPTH = {total_pixels};\n")
         f.write("WIDTH = 8;\n")
-        f.write("ADDRESS_RADIX = UNS;\n")  # Memory addresses are unsigned integers
-        f.write("DATA_RADIX = HEX;\n\n")   # Pixel color data is in hex
+        f.write("ADDRESS_RADIX = UNS;\n")  
+        f.write("DATA_RADIX = HEX;\n\n")   
         f.write("CONTENT BEGIN\n")
 
         # --- Pixel Data ---
