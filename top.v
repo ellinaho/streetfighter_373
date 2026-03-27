@@ -7,9 +7,9 @@ module top(
     output VGA_BLANK_N,
     output VGA_SYNC_N,
     output VGA_CLK,
-    output [9:0] VGA_R,
-    output [9:0] VGA_G,
-    output [9:0] VGA_B
+    output [7:0] VGA_R,
+    output [7:0] VGA_G,
+    output [7:0] VGA_B
 );
 
     // =========================================================
@@ -18,17 +18,30 @@ module top(
     // We lock the players in place so the graphics module 
     // has fixed coordinates to draw on the screen.
     
-    wire [9:0] p1_x     = 10'd230;
-    wire [9:0] p1_y     = 10'd240;
+	 reg [9:0] p1_x = 10'd220;
+	 reg p1_dir = 1'b0; //0 is moving right, 1 is moving left
+    wire [9:0] p1_y     = 10'd280;
     wire [3:0] p1_state = 4'd0;
     wire [2:0] p1_frame = 3'd0;
     wire [7:0] p1_hp    = 8'd50; 
 
-    wire [9:0] p2_x     = 10'd345;
-    wire [9:0] p2_y     = 10'd240;
+    wire [9:0] p2_x     = 10'd380;
+    wire [9:0] p2_y     = 10'd280;
     wire [3:0] p2_state = 4'd0;
     wire [2:0] p2_frame = 3'd0;
     wire [7:0] p2_hp    = 8'd25; 
+	 
+	 always @(negedge VGA_VS) begin
+		if (p1_dir == 1'b0) begin
+			p1_x <= p1_x + 1'b1;
+			if (p1_x >= 10'd300)
+				p1_dir <= 1'b1;
+		end else begin
+			p1_x <= p1_x - 1'b1;
+			if (p1_x <= 10'd220)
+				p1_dir <= 1'd0;
+			end
+		end
 
     // =========================================================
     // 2. ROM WIRES (The copper traces connecting the chips)

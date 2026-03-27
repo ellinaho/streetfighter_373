@@ -29,9 +29,9 @@ module graphics(
     output VGA_BLANK_N, 
     output VGA_SYNC_N,  
     output VGA_CLK,  
-    output reg [9:0] VGA_R, 
-    output reg [9:0] VGA_G, 
-    output reg [9:0] VGA_B 
+    output reg [7:0] VGA_R, 
+    output reg [7:0] VGA_G, 
+    output reg [7:0] VGA_B 
 );
 
 // --- PART 1: CLOCK & SYNC ---
@@ -56,18 +56,18 @@ module graphics(
     assign VGA_SYNC_N = 1'b1; 
 
 // --- PART 2: CONSTANTS ---
-    parameter TRANSPARENT = 8'hFF; 
+    parameter TRANSPARENT = 8'hE3; 
     parameter BG_W  = 200;
-    parameter BG_H  = 100;
+    parameter BG_H  = 150;
     parameter BG_START_X = 220; 
     parameter BG_START_Y = 190; 
 
-    parameter SPR_W = 65;
-    parameter SPR_H = 40;
+    parameter SPR_W = 40;
+    parameter SPR_H = 65;
     parameter PIXELS_PER_FRAME = 2600; 
 
-    parameter HP_W  = 52;
-    parameter HP_H  = 6;
+    parameter HP_W  = 50;
+    parameter HP_H  = 4;
 
 // --- PART 3: BOUNDING BOXES ---
     wire in_bg = (h_count >= BG_START_X && h_count < BG_START_X + BG_W && 
@@ -80,7 +80,7 @@ module graphics(
                   v_count >= p2_y && v_count < p2_y + SPR_H);
 
     wire [10:0] p1_hp_x_start = BG_START_X + 30;
-    wire [10:0] hp_y_start    = BG_START_Y + 110; // Adjusted to be closer to arena
+    wire [10:0] hp_y_start    = BG_START_Y + 15; 
     
     wire in_p1_hp_border = (h_count >= p1_hp_x_start - 1 && h_count <= p1_hp_x_start + HP_W && 
                             v_count >= hp_y_start - 1 && v_count <= hp_y_start + HP_H);
@@ -157,15 +157,9 @@ module graphics(
             8'hE0: begin VGA_R = 10'd1023; VGA_G = 10'd0;    VGA_B = 10'd0;    end // HP Fill (Red)
             
             default: begin 
-                // We take the 3 bits of Red and shift them to the top of 10 bits
-                // Then we repeat the bits to fill the "empty" space so 100% Red stays 100% Red
-                VGA_R = {final_color_8bit[7:5], final_color_8bit[7:5], final_color_8bit[7:5], 1'b0};
-                
-                // Same for Green (3 bits)
-                VGA_G = {final_color_8bit[4:2], final_color_8bit[4:2], final_color_8bit[4:2], 1'b0};
-                
-                // For Blue (only 2 bits), we repeat them more often
-                VGA_B = {final_color_8bit[1:0], final_color_8bit[1:0], final_color_8bit[1:0], final_color_8bit[1:0], final_color_8bit[1:0]};
+                VGA_R = {final_color_8bit[7:5], 5'b0};
+					 VGA_G = {final_color_8bit[4:2], 5'b0};
+					 VGA_B = {final_color_8bit[1:0], 6'b0};
             end
         endcase
     end
