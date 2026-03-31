@@ -27,6 +27,7 @@ EmgResult emg_update(EmgDetector *ed, uint16_t sample, uint32_t now_ms)
 {
     EmgResult result = {0};
 
+    // Active when signal spikes HIGH (flexing) — tune EMG_THRESHOLD between rest and flex values
     uint8_t above = (sample >= EMG_THRESHOLD);
 
     switch (ed->state) {
@@ -64,8 +65,10 @@ EmgResult emg_update(EmgDetector *ed, uint16_t sample, uint32_t now_ms)
                 // held long enough to be worth evaluating
                 ed->state = EMG_STATE_EVALUATING;
             } else {
-                // too short — treat as noise, go back to idle
-                ed->state        = EMG_STATE_IDLE;
+                // too short — treat as noise
+                // if we already had charge built up, go back to CHARGED so
+                // multiplier isn't lost; otherwise return to IDLE
+                ed->state        = (ed->multiplier > 0) ? EMG_STATE_CHARGED : EMG_STATE_IDLE;
                 ed->clench_ticks = 0;
                 ed->miss_ticks   = 0;
                 ed->window_ticks = 0;

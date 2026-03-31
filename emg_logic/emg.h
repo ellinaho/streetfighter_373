@@ -6,7 +6,8 @@
 
 // ── Tunable constants ─────────────────────────────────────────
 
-// ADC threshold to consider a sample as "above baseline"
+// ADC threshold — active (flexing) when signal goes ABOVE this value.
+// Set between your resting value and your peak flex value.
 #define EMG_THRESHOLD        500      // raw ADC counts — tune to your sensor
 
 // Fraction of samples in the clench window that must exceed threshold
