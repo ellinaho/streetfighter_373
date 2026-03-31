@@ -14,8 +14,10 @@ module game_engine(
 );
 
      // State definitions and transitions
-    typedef enum reg [1:0] {STARTUP = 2'b00, PLAY = 2'b01, GAMEOVER = 2'b10} state_t;
-    state_t current_state, next_state;
+    localparam STARTUP = 3'd0, PLAY = 3'd1, GAMEOVER = 3'd2;
+    reg [2:0] current_state;
+    // typedef enum reg [1:0] {STARTUP = 2'b00, PLAY = 2'b01, GAMEOVER = 2'b10} state_t;
+    // state_t current_state, next_state;
 
     always @(posedge clk or posedge rst) begin
         if (rst) begin
