@@ -32,13 +32,13 @@ module player_controller#(
     input wire [1:0] h_move_cmd,
     input wire       jump_cmd,
     input wire       punch_cmd,
-    input wire [2:0] punch_val,
-    input wire       kick_cmd,
-    input wire [2:0] kick_val,
+    input wire [3:0] punch_val,
+    // input wire       kick_cmd,
+    // input wire [2:0] kick_val,
     input wire [3:0] H_speed,
     // input wire [3:0] V_speed,
     input wire       powerUp_cmd,
-    input wire [2:0] powerUp_val,
+    input wire [7:0] powerUp_val,
     
     // --- 2. INCOMING COMBAT (From Referee & Opponent) ---
     // We replace all specific p1/p2 signals with a generic "I got hit" pulse
@@ -53,29 +53,27 @@ module player_controller#(
     
     // --- 4. OUTGOING COMBAT (To Referee & Opponent) ---
     output wire       is_punching,         // Tells referee to turn on the upper hitbox
-    output wire       is_kicking,          // Tells referee to turn on the lower hitbox
-    output reg [4:0] outgoing_damage_val  // The damage we will deal IF the referee says it hits
+    output wire       is_dead,
+    // output wire       is_kicking,          // Tells referee to turn on the lower hitbox
+    output reg [6:0] outgoing_damage_val,  // The damage we will deal IF the referee says it hits
+    output reg [2:0] sprite_state
 );
     // character movements
     localparam MAX_WIDTH = 640;
     localparam GROUND_Y = 400;
     localparam GRAVITY = -10;
     localparam punch_mul = 10;
-    localparam kick_mul = 15;
+    // localparam kick_mul = 15;
     reg signed [7:0] V_speed = 30;
     // typedef enum {ON_GROUND, JUMPING, FALLING} state_vertical;
     // typedef enum {IDLE, MOVING, ATTACK_ACTIVE, CHARGING, HIT_STUN} state_horizontal; // do we need like a stun phase?
-    localparam IDLE = 3'd0, MOVING = 3'd1, ATTACK_ACTIVE = 3'd2, CHARGING = 3'd3, HIT_STUN = 3'd4;
+    localparam IDLE = 3'd0, MOVING = 3'd1, ATTACK_ACTIVE = 3'd2, CHARGING = 3'd3, HIT_STUN = 3'd4, DEAD = 3'd5, JUMP_PUNCH = 3'd6, JUMP = 3'd7;
     reg [2:0] H_move_state;
 
     localparam ON_GROUND = 2'd0, JUMPING = 2'd1, FALLING = 2'd2;
     reg [1:0] V_move_state;
     // state_vertical V_move_state;
     // state_horizontal H_move_state;
-
-    wire collision;
-     // defining hitbox, how close characters must be to hit each other
-    // assign collision = (pos_x < enemy_x + 20) && (pos_x + 20 > enemy_x) && (pos_y < enemy_y + 20) && (pos_y + 20 > enemy_y);
 
     // p1 movements
 
@@ -86,7 +84,7 @@ module player_controller#(
     always @(posedge clk) begin
         if (reset) begin
             H_move_state <= IDLE;
-            hp <= 100;
+            hp <= 125;
             pos_x <= START_X;
             action_timer <= 0;
             facing_right <= START_FACING;
@@ -94,16 +92,22 @@ module player_controller#(
 
         // Getting hit with hit stun has the second highest priority
         else if (take_hit_pulse && (H_move_state != HIT_STUN)) begin
-            hp <= hp - incoming_damage_val; // taking damage
-            H_move_state <= HIT_STUN;   // transition to hit stun state
-            action_timer <= STUN_TIME;  // start the stun timer count down
+            if (hp < incoming_damage_val) begin
+                H_move_state <= DEAD;
+            end
+            else begin
+                hp <= hp - incoming_damage_val; // taking damage
+                H_move_state <= HIT_STUN;   // transition to hit stun state
+                action_timer <= STUN_TIME;  // start the stun timer count down
+            end
         end
 
         // Normal Game Logic
         else begin
             case (H_move_state)
                 IDLE: begin
-                    if (punch_cmd || kick_cmd) begin
+                    // if (punch_cmd || kick_cmd) begin
+                    if (punch_cmd) begin
                         H_move_state <= ATTACK_ACTIVE;
                         action_timer <= STUN_TIME;
                     end
@@ -130,7 +134,8 @@ module player_controller#(
                     end
 
                     if (h_move_cmd == 2'b00) H_move_state <= IDLE;
-                    if (punch_cmd || kick_cmd) begin
+                    // if (punch_cmd || kick_cmd) begin
+                    if (punch_cmd) begin
                         H_move_state <= ATTACK_ACTIVE;
                         action_timer <= STUN_TIME;
                     end
@@ -138,24 +143,11 @@ module player_controller#(
                 end
 
                 ATTACK_ACTIVE: begin
-                    // if (punch_cmd && collision && !p1_punch_lock) begin
-                    //     p2_hp <= p2_hp - (punch_val * punch_mul * powerUp_val);
-                    //     p1_punch_lock <= 1;
-                    //     powerUp_val <= 1;
-                    // end
-                    // else if (kick_cmd && collision && !p1_kick_lock) begin
-                    //     p2_hp <= p2_hp - (kick_val * kick_mul);
-                    //     p1_kick_lock <= 1;
-                    // end
-
-                    // if (!punch_cmd) p1_punch_lock <= 0;    // Reset lock
-                    // if (!kick_cmd) p1_kick_lock <= 0;    // Reset lock
-
                     if (action_timer > 0) begin
                         action_timer <= action_timer - 1;
 
-                        if (punch_cmd)  outgoing_damage_val <= punch_val * punch_mul * powerUp_val;
-                        else if (kick_cmd)  outgoing_damage_val <= kick_val * kick_mul * powerUp_val;
+                        if (punch_cmd)  outgoing_damage_val <= (punch_val * punch_mul * powerUp_val) / 10;
+                        // else if (kick_cmd)  outgoing_damage_val <= kick_val * kick_mul * powerUp_val;
                     end else begin
                         outgoing_damage_val <= 0;
                         if (h_move_cmd != 0'b00) H_move_state <= MOVING;
@@ -176,6 +168,9 @@ module player_controller#(
                     end else begin
                         H_move_state <= IDLE;
                     end
+                end
+
+                DEAD: begin
                 end
             endcase
         end
@@ -206,6 +201,66 @@ module player_controller#(
         end
     end
 
+    // Sprite Updates
+    localparam SPRITE_IDLE_R      = 4'd0;
+    localparam SPRITE_IDLE_L      = 4'd1;
+    localparam SPRITE_WALK_R      = 4'd2;
+    localparam SPRITE_WALK_L      = 4'd3;
+    localparam SPRITE_JUMP_R      = 4'd4;
+    localparam SPRITE_JUMP_L      = 4'd5;
+    localparam SPRITE_PUNCH_R     = 4'd6;
+    localparam SPRITE_PUNCH_L     = 4'd7;
+    localparam SPRITE_JUMP_PUNCH_R= 4'd8;
+    localparam SPRITE_JUMP_PUNCH_L= 4'd9;
+    localparam SPRITE_HIT_STUN_R  = 4'd10;
+    localparam SPRITE_HIT_STUN_L  = 4'd11;
+    localparam SPRITE_KO_R        = 4'd12;
+    localparam SPRITE_KO_L        = 4'd13;
+
+    reg [3:0] current_sprite;
+    assign sprite_id = current_sprite;
+
+    always @(*) begin
+        // Dead
+        // if (H_move_state == DEAD) begin
+        //     current_sprite = facing_right ? SPRITE_KO_R : SPRITE_KO_L;
+        // end
+        // // Gettinng Hit
+        // else if (H_move_state == HIT_STUN) begin
+        //     current_sprite = facing_right ? SPRITE_HIT_STUN_R : SPRITE_HIT_STUN_L;
+        // end
+        // // In the Air
+        // else if (V_move_state == JUMPING || V_move_state == FALLING) begin
+        //     if (H_move_state == ATTACK_ACTIVE)
+        //         current_sprite = facing_right ? SPRITE_JUMP_PUNCH_R : SPRITE_JUMP_PUNCH_L;
+        //     else
+        //         current_sprite = facing_right ? SPRITE_JUMP_R : SPRITE_JUMP_L;
+        // end
+        // // Ground Attacks
+        // else if (H_move_state == ATTACK_ACTIVE) begin
+        //     current_sprite = facing_right ? SPRITE_PUNCH_R : SPRITE_PUNCH_L;
+        // end
+        // // Moving
+        // else if (H_move_state == MOVING) begin
+        //     current_sprite = facing_right ? SPRITE_WALK_R : SPRITE_WALK_L;
+        // end
+        // // Idle
+        // else begin
+        //     current_sprite = facing_right ? SPRITE_IDLE_R : SPRITE_IDLE_L;
+        // end
+        if (H_move_state == DEAD)   sprite_state = DEAD;
+        else if (H_move_state == IDLE)   sprite_state = IDLE;
+        else if (H_move_state == MOVING)   sprite_state = MOVING;
+        else if (V_move_state == JUMPING || V_move_state == FALLING) begin
+            if (H_move_state == ATTACK_ACTIVE)
+                sprite_state = JUMP_PUNCH;
+            else
+                sprite_state = JUMP;
+        end
+        else if (H_move_state == CHARGING)  sprite_state = CHARGING;
+    end
+
     assign is_punching = (H_move_state == ATTACK_ACTIVE) && punch_cmd;
-    assign is_kicking  = (H_move_state == ATTACK_ACTIVE) && kick_cmd;
+    assign is_dead     = (H_move_state == DEAD);
+    // assign is_kicking  = (H_move_state == ATTACK_ACTIVE) && kick_cmd;
 endmodule
