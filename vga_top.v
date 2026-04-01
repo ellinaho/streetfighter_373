@@ -1,4 +1,4 @@
-module top(
+module vga_top(
     input CLOCK_50,
 
     output VGA_HS,
@@ -11,18 +11,63 @@ module top(
     output [7:0] VGA_B
 );
 
+    //coordinates
+    parameter SPRITE_H = 53;
+    parameter SPRITE_W = 64;
+    parameter FLOOR_Y = 110;
+    parameter GROUND_LEVEL = FLOOR_Y - SPRITE_H;
+    
+    //player states
+    parameter IDLE = 0;
+
+    //animations
+    parameter P1_IDLE_FRAMES = 4;
+
+    //player registers
+    reg [9:0] p1_x = 10'd10; //sprite top left coordinate
+    reg [9:0] p1_y = GROUND_LEVEL; 
+    reg [3:0] p1_state = IDLE; 
+    reg [3:0] p1_frame = 0;
+
+    //timing
+    reg [3:0] anim_timer1 = 4'd0;
+
+
+always @(negedge VGA_VS) begin
+    case(p1_state)
+        IDLE: begin
+            anim_timer1 <= anim_timer1 + 1;
+            if (anim_timer1 >= (24/P1_IDLE_FRAMES - 1)) begin
+                anim_timer1 <= 0;
+                if (p1_frame >= (IDLE_FRAMES - 1)) 
+                    p1_frame <= 0;
+                else 
+                    p1_frame <= p1_frame + 1'b1;
+            end
+        end   
+    endcase
+end
 //ROM WIRES
+    wire [16:0] p1_rom_addr; //change
     wire [14:0] bg_rom_addr;
-    wire [7:0] bg_rom_data;
+    wire [7:0] bg_rom_data, p1_rom_data;
+
 
 //HARDWARE ROM
-    bg_sprite_rom background_memory (.address(bg_rom_addr), .clock(CLOCK_50), .q(bg_rom_data));
+    p1_rom player1_memory (.address(p1_rom_addr), .clock(CLOCK_50), .q(p1_rom_data));
+    bg_rom background_memory (.address(bg_rom_addr), .clock(CLOCK_50), .q(bg_rom_data));
 
 //call graphics, TODO: ensure inputs are all right
-    graphics my_graphics (
+    pixel my_pixel (
         .CLOCK_50   (CLOCK_50),
         .bg_rom_addr(bg_rom_addr),
         .bg_rom_data(bg_rom_data),
+        .p1_rom_addr(p1_rom_addr),
+        .p1_rom_data(p1_rom_data),
+        .p1_x       (p1_x),
+        .p1_y       (p1_y),
+        .p1_state   (p1_state),
+        .p1_frame   (p1_frame),
         
         .VGA_HS     (VGA_HS),
         .VGA_VS     (VGA_VS),

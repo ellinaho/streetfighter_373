@@ -2,8 +2,8 @@ import sys
 from PIL import Image
 
 # --- Configuration ---
-INPUT_IMAGE = "bg.png" 
-OUTPUT_MIF = "bg_rom.mif"
+INPUT_IMAGE = "p1_idle_4.png" 
+OUTPUT_MIF = "p1_rom.mif"
 
 # Your specific background color to ignore
 TRANSPARENT_RGB = (173, 241, 207)

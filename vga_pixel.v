@@ -1,7 +1,14 @@
-module write_pixel(
+module pixel(
     input CLOCK_50,
     output reg [14:0] bg_rom_addr, 
+    output reg [16:0] p1_rom_addr, 
     input [7:0] bg_rom_data, 
+    input [7:0] p1_rom_data, 
+
+    input [9:0] p1_x, 
+    input [9:0] p1_y, 
+    input [3:0] p1_state,  
+    input [3:0] p1_frame,   
 
     output VGA_HS, 
     output VGA_VS, 
@@ -37,32 +44,53 @@ module write_pixel(
 // Parameters 
 
     parameter TRANSPARENT = 8'hE3; //magenta
-    parameter BG_START_X = 0; //top left
-    parameter BG_START_Y = 0; 
     parameter GAME_W = 160;
     parameter GAME_H = 120;
 
-//BOUNDING BOXES
-    wire bg_box = (h_count >= BG_START_X && h_count < BG_START_X + GAME_W && 
-                   v_count >= BG_START_Y && v_count < BG_START_Y + GAME_H);
+    parameter SPRITE_W = 64; 
+    parameter SPRITE_H = 53;
+    parameter PIXELS_PER_FRAME = SPRITE_W * SPRITE_H;
+
+    //player state
+    parameter IDLE = 0;
 
 // ADDRESS MATH & MIRRORING ---
     wire [7:0] logic_h = h_count[9:2]; // Bits [9,8,7,6,5,4,3,2] -> Max value 159
     wire [6:0] logic_v = v_count[9:2]; // Bits [9,8,7,6,5,4,3,2] -> Max value 119
 
     wire bg_box = (logic_h < GAME_W && logic_v < GAME_H);
+    wire p1_box = (logic_h >= p1_x && logic_h < p1_x + SPRITE_W && 
+                   logic_v >= p1_y && logic_V < p1_y + SPRITE_H);
+
+    // Player 1 Math
+    wire [10:0] p1_local_y = logic_v - p1_y; 
+    wire [9:0]  p1_local_x = logic_h - p1_x;
+
+    //base address
+    reg [16:0] p1_base;
+    always @(*) begin
+        case(p1_state)
+            IDLE: p1_base = 0;
+            default: p1_base = 0;
+        endcase
+    end
 
     // ROM Address Assignment
     always @(*) begin
         if (bg_box) bg_rom_addr = (logic_v * GAME_W) + logic_h;
         else bg_rom_addr = 0;
+
+        if (p1_box) p1_rom_addr = p1_base + (p1_frame * PIXELS_PER_FRAME) + (p1_local_y * SPRITE_W) + p1_local_x;
+        else p1_rom_addr = 0;
     end
 
 // LAYERING 
     reg [7:0] final_color_8bit;
     always @(*) begin
         if (VGA_BLANK_N) begin
-            if (bg_box)
+            if (p1_box && p1_rom_data != TRANSPARENT)
+                final_color_8bit = p1_rom_data;
+            else if (bg_box)
                 final_color_8bit = bg_rom_data; // Background is all the way in back
             else
                 final_color_8bit = 8'h00; // Black screen boundary
