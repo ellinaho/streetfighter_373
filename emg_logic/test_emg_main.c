@@ -2,18 +2,16 @@
  * test_emg_main.c
  * Standalone EMG powerup charge test for STM32L432KC.
  *
- * The EMG signal comes in on ADC1 (same channel as actual main).
- * TIM6 fires every 1ms to trigger ADC reads at 1kHz.
- * Results are printed over LPUART1 (115200 baud).
+ * Timing architecture:
+ *   TIM6 hardware-triggers ADC every 1ms (no ISR needed to start ADC).
+ *   ADC completion fires HAL_ADC_ConvCpltCallback which calls emg_update.
+ *   Main loop only handles printing — zero timing sensitivity.
  *
- * State machine:
- *   IDLE       -> waiting for clench above threshold
- *   CLENCHING  -> accumulating ticks, tolerates short dropouts
- *   EVALUATING -> checks peak ratio, adds to charge if quality clench
- *   CHARGED    -> powerup ready, signals main STM until punch resets it
- *
- * For combined main: copy the USER CODE sections below into your main.c.
- * emg.h and emg.c must be in your project's Inc/Src folders.
+ * CubeIDE config required:
+ *   ADC1 -> External Trigger: TIM6 Trigger Out Event, Rising Edge
+ *   TIM6 -> Trigger Output (TRGO): Update Event
+ *   ADC1 interrupt enabled (NVIC)
+ *   TIM6 period = (SystemCoreClock / 1000) - 1  for 1ms
  */
 
 #include "main.h"
@@ -25,11 +23,12 @@ extern ADC_HandleTypeDef  hadc1;
 extern TIM_HandleTypeDef  htim6;
 extern UART_HandleTypeDef hlpuart1;
 
-/* ── Globals ─────────────────────────────────────────────────── */
-static EmgDetector       ed;
-static volatile uint8_t  emg_read_flag = 0;   // set by TIM6 ISR every 1ms
+/* ── Globals ──────────────────────────────────────────────────── */
+static EmgDetector        ed;
+static volatile EmgResult emg_result;          // written in ADC ISR, read in main
+static volatile uint8_t   emg_result_ready = 0;
 
-/* ── Retarget printf to LPUART1 ─────────────────────────────── */
+/* ── Retarget printf to LPUART1 ──────────────────────────────── */
 #ifdef __GNUC__
 #define PUTCHAR_PROTOTYPE int __io_putchar(int ch)
 #else
@@ -41,22 +40,18 @@ PUTCHAR_PROTOTYPE
     return ch;
 }
 
-/* ── TIM6 ISR: 1ms tick for EMG sampling ─────────────────────── */
-// NOTE: if sharing TIM6 with punch (10ms), either use a separate timer
-// or let the punch code set its own flag on every 10th tick here
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+/* ── ADC conversion complete ISR ─────────────────────────────── */
+// Fires automatically when TIM6 triggers ADC and conversion finishes.
+// Does all EMG work here — guaranteed 1ms cadence, no polling.
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 {
-    if (htim->Instance == TIM6) {
-        emg_read_flag = 1;
+    if (hadc->Instance == ADC1) {
+        uint16_t  sample = (uint16_t)HAL_ADC_GetValue(hadc);
+        uint32_t  now    = HAL_GetTick();
+        EmgResult res    = emg_update(&ed, sample, now);
+        emg_result       = res;
+        emg_result_ready = 1;
     }
-}
-
-/* ── Read one ADC sample (blocking single conversion) ────────── */
-static uint16_t read_emg_adc(void)
-{
-    HAL_ADC_Start(&hadc1);
-    HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
-    return (uint16_t)HAL_ADC_GetValue(&hadc1);
 }
 
 /* ── Main ────────────────────────────────────────────────────── */
@@ -70,10 +65,12 @@ int main(void)
     MX_TIM6_Init();
 
     HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
-
     emg_init(&ed);
 
-    HAL_TIM_Base_Start_IT(&htim6);
+    // Start ADC in interrupt mode — TIM6 hardware trigger fires conversions
+    HAL_ADC_Start_IT(&hadc1);
+    // TIM6 runs freely, its TRGO triggers ADC every 1ms
+    HAL_TIM_Base_Start(&htim6);
 
     printf("\r\n=== EMG Powerup Test ===\r\n");
     printf("Threshold: %d  MinClench: %dms  MissLimit: %d ticks\r\n",
@@ -84,15 +81,11 @@ int main(void)
     uint8_t last_multiplier = 0;
 
     while (1) {
-        if (emg_read_flag) {
-            emg_read_flag = 0;
+        // main loop only prints — all timing-sensitive work is in the ADC ISR
+        if (emg_result_ready) {
+            emg_result_ready = 0;
+            EmgResult res = emg_result;  // local copy so ISR can't clobber mid-print
 
-            uint16_t  sample = read_emg_adc();
-            uint32_t  now    = HAL_GetTick();
-            EmgResult res    = emg_update(&ed, sample, now);
-
-            // only print on multiplier change — printing every tick blocks UART
-            // and causes missed TIM6 ticks, starving the charge accumulator
             if (res.charged && res.multiplier != last_multiplier) {
                 last_multiplier = res.multiplier;
                 printf("CHARGED! multiplier=%dx  charge=%lu\r\n",
@@ -102,9 +95,6 @@ int main(void)
                 last_multiplier = 0;
                 printf("charge reset\r\n");
             }
-
-            // example: simulate punch resetting charge (tie to punch detection)
-            // emg_on_punch(&ed);
         }
     }
 }
