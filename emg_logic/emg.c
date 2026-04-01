@@ -92,14 +92,16 @@ EmgResult emg_update(EmgDetector *ed, uint16_t sample, uint32_t now_ms)
             if (ed->charge > EMG_MAX_CHARGE)
                 ed->charge = EMG_MAX_CHARGE;
 
-            // compute multiplier from charge bucket
-            // charge/denom gives 0–3, cap at EMG_MAX_MULTIPLIER
-            uint8_t new_mult = (uint8_t)(ed->charge / EMG_CHARGE_DENOM);
-            if (new_mult > EMG_MAX_MULTIPLIER)
-                new_mult = EMG_MAX_MULTIPLIER;
-
-            if (new_mult > ed->multiplier) {
-                ed->multiplier = new_mult;
+            // linear multiplier: 2.0 at EMG_MIN_CHARGE, 4.0 at EMG_MAX_CHARGE
+            // below EMG_MIN_CHARGE = not enough charge yet, stays 0
+            if (ed->charge >= EMG_MIN_CHARGE) {
+                float t        = (float)(ed->charge - EMG_MIN_CHARGE)
+                               / (float)(EMG_MAX_CHARGE - EMG_MIN_CHARGE);
+                float new_mult = EMG_MULT_MIN + t * (EMG_MULT_MAX - EMG_MULT_MIN);
+                // round to 1 decimal place
+                new_mult = (float)(int)(new_mult * 10.0f + 0.5f) / 10.0f;
+                if (new_mult > ed->multiplier)
+                    ed->multiplier = new_mult;
             }
         }
         // either way, move to CHARGED if we have any multiplier, else idle
@@ -125,7 +127,7 @@ EmgResult emg_update(EmgDetector *ed, uint16_t sample, uint32_t now_ms)
 
         // if user starts clenching again, go back to clenching
         // so they can keep building charge up to the cap
-        if (above && ed->multiplier < EMG_MAX_MULTIPLIER) {
+        if (above && ed->multiplier < EMG_MULT_MAX) {
             ed->state           = EMG_STATE_CLENCHING;
             ed->clench_start_ms = now_ms;
             ed->clench_ticks    = 1;

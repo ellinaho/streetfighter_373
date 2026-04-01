@@ -78,7 +78,7 @@ int main(void)
     printf("Clench and hold to charge. Max multiplier: %dx\r\n\r\n",
            EMG_MAX_MULTIPLIER);
 
-    uint8_t last_multiplier = 0;
+    float last_multiplier = 0.0f;
 
     while (1) {
         // main loop only prints — all timing-sensitive work is in the ADC ISR
@@ -88,11 +88,11 @@ int main(void)
 
             if (res.charged && res.multiplier != last_multiplier) {
                 last_multiplier = res.multiplier;
-                printf("CHARGED! multiplier=%dx  charge=%lu\r\n",
+                printf("CHARGED! multiplier=%.1fx  charge=%lu\r\n",
                        res.multiplier, (unsigned long)ed.charge);
             }
-            if (!res.charged && last_multiplier != 0) {
-                last_multiplier = 0;
+            if (!res.charged && last_multiplier != 0.0f) {
+                last_multiplier = 0.0f;
                 printf("charge reset\r\n");
             }
         }

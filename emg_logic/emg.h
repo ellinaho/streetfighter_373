@@ -23,14 +23,14 @@
 // Sampling interval (matches your ADC/timer setup)
 #define EMG_SAMPLE_MS        1        // 1ms = 1kHz sampling
 
-// Charge accumulator — max charge needed to hit multiplier 3
-// With noisy EMG, only ~70% of ticks are above threshold, so use
-// EMG_CHARGE_DENOM = 700 meaning ~1s of real clenching = 1 multiplier level
-#define EMG_MAX_CHARGE       2100     // 3 * EMG_CHARGE_DENOM
-#define EMG_CHARGE_DENOM     700      // divide by this to get 0–3 range
+// Charge accumulator — ~70% of ticks are above threshold on a noisy EMG,
+// so 1s real clench ≈ 700 above-threshold ticks. 3s = 2100 = max charge.
+#define EMG_MAX_CHARGE       2100     // ticks needed for full charge (3s)
+#define EMG_MIN_CHARGE       700      // ticks needed for minimum multiplier (1s)
 
-// Powerup multiplier cap (e.g. 3x max)
-#define EMG_MAX_MULTIPLIER   3
+// Multiplier range: 1s clench = 2.0x, 3s clench = 4.0x, linear between
+#define EMG_MULT_MIN         2.0f     // multiplier at EMG_MIN_CHARGE
+#define EMG_MULT_MAX         4.0f     // multiplier at EMG_MAX_CHARGE
 
 // ── State machine ─────────────────────────────────────────────
 
@@ -51,7 +51,7 @@ typedef struct {
 
     // charge accumulator
     uint32_t  charge;               // accumulated charge (capped at EMG_MAX_CHARGE)
-    uint8_t   multiplier;           // current powerup multiplier (0–EMG_MAX_MULTIPLIER)
+    float     multiplier;           // current powerup multiplier (0.0 = none, 2.0–4.0 when charged)
 
     // evaluation scratch
     uint32_t  window_ticks;         // total ticks in the clench window (above + miss)
@@ -59,7 +59,7 @@ typedef struct {
 
 typedef struct {
     uint8_t  charged;               // 1 = powerup ready to send
-    uint8_t  multiplier;            // powerup level (1–EMG_MAX_MULTIPLIER)
+    float    multiplier;            // powerup level (2.0–4.0), 0.0 if not charged
 } EmgResult;
 
 void       emg_init(EmgDetector *ed);
