@@ -23,9 +23,11 @@
 // Sampling interval (matches your ADC/timer setup)
 #define EMG_SAMPLE_MS        1        // 1ms = 1kHz sampling
 
-// Charge accumulator — max is 3000 ticks at 1ms = 3 seconds clamped
-#define EMG_MAX_CHARGE       3000     // raw tick count
-#define EMG_CHARGE_DENOM     1000     // divide by this to get 0–3 range
+// Charge accumulator — max charge needed to hit multiplier 3
+// With noisy EMG, only ~70% of ticks are above threshold, so use
+// EMG_CHARGE_DENOM = 700 meaning ~1s of real clenching = 1 multiplier level
+#define EMG_MAX_CHARGE       2100     // 3 * EMG_CHARGE_DENOM
+#define EMG_CHARGE_DENOM     700      // divide by this to get 0–3 range
 
 // Powerup multiplier cap (e.g. 3x max)
 #define EMG_MAX_MULTIPLIER   3

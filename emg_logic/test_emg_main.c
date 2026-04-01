@@ -81,6 +81,8 @@ int main(void)
     printf("Clench and hold to charge. Max multiplier: %dx\r\n\r\n",
            EMG_MAX_MULTIPLIER);
 
+    uint8_t last_multiplier = 0;
+
     while (1) {
         if (emg_read_flag) {
             emg_read_flag = 0;
@@ -89,10 +91,16 @@ int main(void)
             uint32_t  now    = HAL_GetTick();
             EmgResult res    = emg_update(&ed, sample, now);
 
-            if (res.charged) {
-                // powerup ready — in combined main this sends value to main STM
+            // only print on multiplier change — printing every tick blocks UART
+            // and causes missed TIM6 ticks, starving the charge accumulator
+            if (res.charged && res.multiplier != last_multiplier) {
+                last_multiplier = res.multiplier;
                 printf("CHARGED! multiplier=%dx  charge=%lu\r\n",
                        res.multiplier, (unsigned long)ed.charge);
+            }
+            if (!res.charged && last_multiplier != 0) {
+                last_multiplier = 0;
+                printf("charge reset\r\n");
             }
 
             // example: simulate punch resetting charge (tie to punch detection)
