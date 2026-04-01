@@ -51,6 +51,7 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
         EmgResult res    = emg_update(&ed, sample, now);
         emg_result       = res;
         emg_result_ready = 1;
+        // no re-arm needed — TIM6 hardware trigger fires next conversion automatically
     }
 }
 
@@ -75,8 +76,8 @@ int main(void)
     printf("\r\n=== EMG Powerup Test ===\r\n");
     printf("Threshold: %d  MinClench: %dms  MissLimit: %d ticks\r\n",
            EMG_THRESHOLD, EMG_MIN_CLENCH_MS, EMG_MISS_LIMIT);
-    printf("Clench and hold to charge. Max multiplier: %dx\r\n\r\n",
-           EMG_MAX_MULTIPLIER);
+    printf("Clench and hold to charge. Max multiplier: %.1fx\r\n\r\n",
+           EMG_MULT_MAX);
 
     float last_multiplier = 0.0f;
 
@@ -84,12 +85,16 @@ int main(void)
         // main loop only prints — all timing-sensitive work is in the ADC ISR
         if (emg_result_ready) {
             emg_result_ready = 0;
-            EmgResult res = emg_result;  // local copy so ISR can't clobber mid-print
+
+            // disable IRQ briefly for atomic copy of volatile struct
+            __disable_irq();
+            EmgResult res = emg_result;
+            __enable_irq();
 
             if (res.charged && res.multiplier != last_multiplier) {
                 last_multiplier = res.multiplier;
                 printf("CHARGED! multiplier=%.1fx  charge=%lu\r\n",
-                       res.multiplier, (unsigned long)ed.charge);
+                       res.multiplier, (unsigned long)res.charge);
             }
             if (!res.charged && last_multiplier != 0.0f) {
                 last_multiplier = 0.0f;

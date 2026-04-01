@@ -8,7 +8,7 @@ void emg_init(EmgDetector *ed)
     ed->clench_ticks    = 0;
     ed->miss_ticks      = 0;
     ed->charge          = 0;
-    ed->multiplier      = 0;
+    ed->multiplier      = 0.0f;
     ed->window_ticks    = 0;
 }
 
@@ -16,7 +16,7 @@ void emg_init(EmgDetector *ed)
 void emg_on_punch(EmgDetector *ed)
 {
     ed->charge      = 0;
-    ed->multiplier  = 0;
+    ed->multiplier  = 0.0f;
     ed->state       = EMG_STATE_IDLE;
     ed->miss_ticks  = 0;
     ed->clench_ticks = 0;
@@ -68,7 +68,7 @@ EmgResult emg_update(EmgDetector *ed, uint16_t sample, uint32_t now_ms)
                 // too short — treat as noise
                 // if we already had charge built up, go back to CHARGED so
                 // multiplier isn't lost; otherwise return to IDLE
-                ed->state        = (ed->multiplier > 0) ? EMG_STATE_CHARGED : EMG_STATE_IDLE;
+                ed->state        = (ed->multiplier > 0.0f) ? EMG_STATE_CHARGED : EMG_STATE_IDLE;
                 ed->clench_ticks = 0;
                 ed->miss_ticks   = 0;
                 ed->window_ticks = 0;
@@ -105,7 +105,7 @@ EmgResult emg_update(EmgDetector *ed, uint16_t sample, uint32_t now_ms)
             }
         }
         // either way, move to CHARGED if we have any multiplier, else idle
-        if (ed->multiplier > 0) {
+        if (ed->multiplier > 0.0f) {
             ed->state = EMG_STATE_CHARGED;
         } else {
             ed->state = EMG_STATE_IDLE;
@@ -137,5 +137,6 @@ EmgResult emg_update(EmgDetector *ed, uint16_t sample, uint32_t now_ms)
         break;
     }
 
+    result.charge = ed->charge;
     return result;
 }

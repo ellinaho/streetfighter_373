@@ -12,10 +12,10 @@
 
 // Fraction of samples in the clench window that must exceed threshold
 // to confirm a real clench (not noise)
-#define EMG_PEAK_RATIO       0.6f     // 60% of samples must be above threshold
+#define EMG_PEAK_RATIO       0.3f     // 30% of samples must be above threshold
 
 // Minimum clench duration to count toward charge
-#define EMG_MIN_CLENCH_MS    1000     // must clench for at least 1 second
+#define EMG_MIN_CLENCH_MS    200      // must clench for at least 200ms
 
 // How many consecutive below-threshold ticks before we decide clench ended
 #define EMG_MISS_LIMIT       20       // at 1ms sampling = 20ms dropout tolerance
@@ -25,8 +25,8 @@
 
 // Charge accumulator — ~70% of ticks are above threshold on a noisy EMG,
 // so 1s real clench ≈ 700 above-threshold ticks. 3s = 2100 = max charge.
-#define EMG_MAX_CHARGE       2100     // ticks needed for full charge (3s)
-#define EMG_MIN_CHARGE       700      // ticks needed for minimum multiplier (1s)
+#define EMG_MAX_CHARGE       2100     // ticks needed for full charge (~3s of above-threshold signal)
+#define EMG_MIN_CHARGE       300      // ticks needed for minimum multiplier (~0.5s of signal)
 
 // Multiplier range: 1s clench = 2.0x, 3s clench = 4.0x, linear between
 #define EMG_MULT_MIN         2.0f     // multiplier at EMG_MIN_CHARGE
@@ -60,6 +60,7 @@ typedef struct {
 typedef struct {
     uint8_t  charged;               // 1 = powerup ready to send
     float    multiplier;            // powerup level (2.0–4.0), 0.0 if not charged
+    uint32_t charge;                // raw charge ticks — for debug printing only
 } EmgResult;
 
 void       emg_init(EmgDetector *ed);
