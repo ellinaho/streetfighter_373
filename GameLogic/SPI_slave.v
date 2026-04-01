@@ -1,145 +1,285 @@
 module spi_slave (
-    input wire SCLK,
-    input wire MOSI,
-    output wire MISO,
-    input wire SS,
-    output reg [7:0] received_data,
+    // --- System Clock ---
     input wire sys_clk,
 
+    // --- Physical SPI Pins ---
+    input wire SCLK,
+    input wire MOSI,
+    input wire SS,
+    output wire MISO,
+
+    // --- OUTGOING COMMANDS: Player 1 (To p1_controller) ---
     output reg [1:0] p1_H_move_cmd,
     output reg       p1_jump_cmd,
     output reg       p1_punch_valid,
-    output reg [2:0] p1_punch_val,
-    output reg       p1_kick_valid,
-    output reg [2:0] p1_kick_val,
+    output reg [3:0] p1_punch_val,      // Increased to 4 bits for base damage
     output reg       p1_PowerUp_valid,
-    output reg [2:0] p1_PowerUp_val,
+    output reg [7:0] p1_PowerUp_val,    // Expanded to 8 bits for integer float math (e.g. 24 = 2.4x)
 
+    // --- OUTGOING COMMANDS: Player 2 (To p2_controller) ---
     output reg [1:0] p2_H_move_cmd,
     output reg       p2_jump_cmd,
     output reg       p2_punch_valid,
-    output reg [2:0] p2_punch_val,
-    output reg       p2_kick_valid,
-    output reg [2:0] p2_kick_val,
+    output reg [3:0] p2_punch_val,      // Increased to 4 bits
     output reg       p2_PowerUp_valid,
-    output reg [2:0] p2_PowerUp_val,
+    output reg [7:0] p2_PowerUp_val,    // Expanded to 8 bits 
 
-    input wire [6:0] p1_hp_in,
-    input wire [6:0] p2_hp_in,
+    // --- INCOMING TELEMETRY: Game State (From Engine/Referee) ---
+    // input wire [6:0] p1_hp_in,
+    // input wire [6:0] p2_hp_in,
     input wire       p1_win_in,
     input wire       p2_win_in,
-
-    input wire p1_hit_p2_upper, p1_hit_p2_lower, p2_hit_p1_upper, p2_hit_p1_lower
+    input wire       p1_hit_p2,         // Unified hit detection (Replaces upper/lower)
+    input wire       p2_hit_p1          // Unified hit detection (Replaces upper/lower)
 );
-    // SPI registers
-    reg [2:0] bit_count = 0;
-    reg [2:0] byte_count = 0;
-    reg [7:0] temp_byte;
-    reg byte_ready = 1;
-    reg p1_active, p2_active = 0;
-    reg [7:0] byte_to_process; // The stable "holding tank"
 
-    // Synchronization layer
-    reg [1:0] byte_ready_sync;
-    reg [1:0] ss_sync;
+    reg [2:0] SCLK_sync;
+    reg [2:0] SS_sync;
+    reg [1:0] MOSI_sync;
+
     always @(posedge sys_clk) begin
-        byte_ready_sync <= {byte_ready_sync[0], byte_ready};
-        ss_sync <= {ss_sync[0], SS};
+        // Shifting the raw pin values into our registers
+        SCLK_sync <= {SCLK_sync[1:0], SCLK};
+        SS_sync   <= {SS_sync[1:0], SS};
+        MOSI_sync <= {MOSI_sync[0], MOSI}; // MOSI doesn't need edge detection, just 2 DFFs to clean it
     end
-    
-    wire br_edge = (byte_ready_sync == 2'b01); // Rising edge detection
-    wire ss_active = !ss_sync[1];              // Active Low SS
 
-    always @(posedge SCLK or posedge SS) begin
-        if (SS) begin
-            // Reset when FPGA is deselected
+    // Decoding the synchronizer history
+    wire sclk_rise = (SCLK_sync[2:1] == 2'b01); 
+    wire sclk_fall = (SCLK_sync[2:1] == 2'b10); 
+    wire ss_active = ~SS_sync[1];               
+    wire ss_start  = (SS_sync[2:1] == 2'b10);   
+    wire mosi_data = MOSI_sync[1];
+
+    // RECEIVER LAYER
+    reg [2:0] bit_count;
+    reg [7:0] shift_reg;
+    reg       byte_ready;
+    reg [7:0] byte_to_process;
+
+    always @(posedge sys_clk) begin
+        byte_ready <= 0;
+
+        if (~ss_active) begin
             bit_count <= 0;
-            byte_ready <= 0;
-            // byte_count <= 0;
-        end else begin
-            // Shifting the byte each time as transmitted data
-            temp_byte <= {temp_byte[6:0], MOSI};
+        end else if (sclk_rise) begin
+            shift_reg <= {shift_reg[6:0], mosi_data}; // Shift MSB first
+            bit_count <= bit_count + 1;
             
-            // Check if one package (8 bits) is transferred
-            if (bit_count == 7) begin
-                bit_count <= 0;
-                byte_ready <= 1;
-                byte_to_process <= {temp_byte[6:0], MOSI}; // Latch the full byte here!
-            end else begin
-                bit_count <= bit_count + 1;
-                byte_ready <= 0;
+            if (bit_count == 3'd7) begin 
+                byte_to_process <= {shift_reg[6:0], mosi_data};
+                byte_ready <= 1; // Pulse ready!
             end
         end
     end
 
+    reg [1:0] byte_count;
+    reg p1_active, p2_active;
+
     always @(posedge sys_clk) begin
-        if (!ss_active) begin
+        if (~ss_active) begin
             byte_count <= 0;
-        end else if (br_edge) begin
-            // Sending 4 data packages per player
+            p1_active  <= 0;
+            p2_active  <= 0;
+        end else if (byte_ready) begin
             case (byte_count)
-                0: begin
+                0:  begin   // Header
                     if (byte_to_process == 8'hA1) begin
-                        p1_active <= 1;
-                        p2_active <= 0;
-                    end
-                    else if (byte_to_process == 8'hA2) begin
-                        p1_active <= 0;
-                        p2_active <= 1;
+                        p1_active <= 1; p2_active <= 0;
+                    end else if (byte_to_process == 8'hA2) begin
+                        p1_active <= 0; p2_active <= 1;
                     end
                     byte_count <= 1;
                 end
-                1: begin
-                    if (p1_active) begin
-                        p1_H_move_cmd <= byte_to_process[7:6];
-                        p1_jump_cmd   <= byte_to_process[5];
-                        p1_PowerUp_valid  <= byte_to_process[4];
-                        p1_PowerUp_val    <= byte_to_process[3:1];
+
+                1:  begin   // Movement/Combat
+                    if (p1_active)  begin
+                        p1_H_move_cmd   <= byte_to_process[7:6];
+                        p1_jump_cmd     <= byte_to_process[5];
+                        p1_punch_valid  <= byte_to_process[4];
+                        p1_punch_val    <= byte_to_process[3:0];
                     end
-                    else if (p2_active)    begin
-                        p2_H_move_cmd <= byte_to_process[7:6];
-                        p2_jump_cmd   <= byte_to_process[5];
-                        p2_PowerUp_valid  <= byte_to_process[4];
-                        p2_PowerUp_val    <= byte_to_process[3:1];
+                    else if (p2_active) begin
+                        p2_H_move_cmd   <= byte_to_process[7:6];
+                        p2_jump_cmd     <= byte_to_process[5];
+                        p2_punch_valid  <= byte_to_process[4];
+                        p2_punch_val    <= byte_to_process[3:0];
                     end
                     byte_count <= 2;
                 end
-                2: begin
-                    if (p1_active) begin
-                        p1_punch_valid <= byte_to_process[7];
-                        p1_kick_valid  <= byte_to_process[6];
-                        p1_punch_val   <= byte_to_process[5:3];
-                        p1_kick_val    <= byte_to_process[2:0];
-                    end
-                    else if (p2_active) begin
-                        p2_punch_valid <= byte_to_process[7];
-                        p2_kick_valid  <= byte_to_process[6];
-                        p2_punch_val   <= byte_to_process[5:3];
-                        p2_kick_val    <= byte_to_process[2:0];
-                    end
+
+                2:  begin   // Power-up Multiplier
+                    if (p1_active) p1_PowerUp_val  <= byte_to_process;
+                    else if (p2_active) p2_PowerUp_val  <= byte_to_process;
+                    byte_count <= 3;
+                end
+
+                3:  begin   // Status/Padding
+                    if (p1_active) p1_PowerUp_valid  <= byte_to_process[7];
+                    else if (p2_active) p2_powerUp_valid  <= byte_to_process[7];
                     byte_count <= 0;
                 end
             endcase
         end
     end
 
-    // Example: Send a fixed value (0x55) on MISO
-    // I gotta send back the data from FPGA to Main STM about hit data
-
-    reg [7:0] tx_buffer; // data to be sent back to STM32
-    always @(negedge SCLK or posedge SS) begin
-        if (SS) begin
-            // When not selected, MISO should usually be High-Z (disconnected)
-            // or preloaded with the first bit of the first byte.
-            tx_buffer <= {p1_UpperHit, p1_LowerHit, p2_UpperHit, p2_LowerHit, p1_win_in, p2_win_in, 2'b00};
-        end else begin
-            // Shift out the MSB (Bit 7) to the MISO pin
-            tx_buffer <= {tx_buffer[6:0], 1'b0};
+    // Transmission Layer
+    reg [7:0] tx_buffer;
+    always@(posedge sys_clk) begin
+        if (ss_start) begin
+            tx_buffer <= {p1_hit_p2, p2_hit_p1, p1_win_in, p2_win_in, 4'b0000};
+        end
+        else if (ss_active && sclk_fall) begin
+            tx_buffer   <= {tx_buffer[6:0], 1'b0};
         end
     end
 
-    // Always drive the MISO pin with the highest bit of our buffer
-    assign MISO = (SS) ? 1'bz : tx_buffer[7];
+    assign MISO = (ss_active) ? tx_buffer[7] : 1'bz;
+endmodule
+
+// module spi_slave (
+//     input wire SCLK,
+//     input wire MOSI,
+//     output wire MISO,
+//     input wire SS,
+//     output reg [7:0] received_data,
+//     input wire sys_clk,
+
+//     output reg [1:0] p1_H_move_cmd,
+//     output reg       p1_jump_cmd,
+//     output reg       p1_punch_valid,
+//     output reg [2:0] p1_punch_val,
+//     output reg       p1_kick_valid,
+//     output reg [2:0] p1_kick_val,
+//     output reg       p1_PowerUp_valid,
+//     output reg [2:0] p1_PowerUp_val,
+
+//     output reg [1:0] p2_H_move_cmd,
+//     output reg       p2_jump_cmd,
+//     output reg       p2_punch_valid,
+//     output reg [2:0] p2_punch_val,
+//     output reg       p2_kick_valid,
+//     output reg [2:0] p2_kick_val,
+//     output reg       p2_PowerUp_valid,  
+//     output reg [2:0] p2_PowerUp_val,
+
+//     input wire [6:0] p1_hp_in,
+//     input wire [6:0] p2_hp_in,
+//     input wire       p1_win_in,
+//     input wire       p2_win_in,
+
+//     input wire p1_hit_p2_upper, p1_hit_p2_lower, p2_hit_p1_upper, p2_hit_p1_lower
+// );
+
+// // SPI registers
+    // reg [2:0] bit_count = 0;
+    // reg [2:0] byte_count = 0;
+    // reg [7:0] temp_byte;
+    // reg byte_ready = 1;
+    // reg p1_active, p2_active = 0;
+    // reg [7:0] byte_to_process; // The stable "holding tank"
+
+    // Synchronization layer
+    // reg [1:0] byte_ready_sync;
+    // reg [1:0] ss_sync;
+    // always @(posedge sys_clk) begin
+    //     byte_ready_sync <= {byte_ready_sync[0], byte_ready};
+    //     ss_sync <= {ss_sync[0], SS};
+    // end
+    
+    // wire br_edge = (byte_ready_sync == 2'b01); // Rising edge detection
+    // wire ss_active = !ss_sync[1];              // Active Low SS
+
+    // always @(posedge SCLK or posedge SS) begin
+    //     if (SS) begin
+    //         // Reset when FPGA is deselected
+    //         bit_count <= 0;
+    //         byte_ready <= 0;
+    //         // byte_count <= 0;
+    //     end else begin
+    //         // Shifting the byte each time as transmitted data
+    //         temp_byte <= {temp_byte[6:0], MOSI};
+            
+    //         // Check if one package (8 bits) is transferred
+    //         if (bit_count == 7) begin
+    //             bit_count <= 0;
+    //             byte_ready <= 1;
+    //             byte_to_process <= {temp_byte[6:0], MOSI}; // Latch the full byte here!
+    //         end else begin
+    //             bit_count <= bit_count + 1;
+    //             byte_ready <= 0;
+    //         end
+    //     end
+    // end
+
+    // always @(posedge sys_clk) begin
+    //     if (!ss_active) begin
+    //         byte_count <= 0;
+    //     end else if (br_edge) begin
+    //         // Sending 4 data packages per player
+    //         case (byte_count)
+    //             0: begin
+    //                 if (byte_to_process == 8'hA1) begin
+    //                     p1_active <= 1;
+    //                     p2_active <= 0;
+    //                 end
+    //                 else if (byte_to_process == 8'hA2) begin
+    //                     p1_active <= 0;
+    //                     p2_active <= 1;
+    //                 end
+    //                 byte_count <= 1;
+    //             end
+    //             1: begin
+    //                 if (p1_active) begin
+    //                     p1_H_move_cmd <= byte_to_process[7:6];
+    //                     p1_jump_cmd   <= byte_to_process[5];
+    //                     p1_PowerUp_valid  <= byte_to_process[4];
+    //                     p1_PowerUp_val    <= byte_to_process[3:1];
+    //                 end
+    //                 else if (p2_active)    begin
+    //                     p2_H_move_cmd <= byte_to_process[7:6];
+    //                     p2_jump_cmd   <= byte_to_process[5];
+    //                     p2_PowerUp_valid  <= byte_to_process[4];
+    //                     p2_PowerUp_val    <= byte_to_process[3:1];
+    //                 end
+    //                 byte_count <= 2;
+    //             end
+    //             2: begin
+    //                 if (p1_active) begin
+    //                     p1_punch_valid <= byte_to_process[7];
+    //                     p1_kick_valid  <= byte_to_process[6];
+    //                     p1_punch_val   <= byte_to_process[5:3];
+    //                     p1_kick_val    <= byte_to_process[2:0];
+    //                 end
+    //                 else if (p2_active) begin
+    //                     p2_punch_valid <= byte_to_process[7];
+    //                     p2_kick_valid  <= byte_to_process[6];
+    //                     p2_punch_val   <= byte_to_process[5:3];
+    //                     p2_kick_val    <= byte_to_process[2:0];
+    //                 end
+    //                 byte_count <= 0;
+    //             end
+    //         endcase
+    //     end
+    // end
+
+    // // Example: Send a fixed value (0x55) on MISO
+    // // I gotta send back the data from FPGA to Main STM about hit data
+
+    // reg [7:0] tx_buffer; // data to be sent back to STM32
+    // always @(negedge SCLK or posedge SS) begin
+    //     if (SS) begin
+    //         // When not selected, MISO should usually be High-Z (disconnected)
+    //         // or preloaded with the first bit of the first byte.
+    //         tx_buffer <= {p1_UpperHit, p1_LowerHit, p2_UpperHit, p2_LowerHit, p1_win_in, p2_win_in, 2'b00};
+    //     end else begin
+    //         // Shift out the MSB (Bit 7) to the MISO pin
+    //         tx_buffer <= {tx_buffer[6:0], 1'b0};
+    //     end
+    // end
+
+    // // Always drive the MISO pin with the highest bit of our buffer
+    // assign MISO = (SS) ? 1'bz : tx_buffer[7];
 
 
 
