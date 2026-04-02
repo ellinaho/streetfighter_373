@@ -34,6 +34,7 @@ module vga_top(
 
     //timing
     reg [3:0] anim_timer1 = 4'd0;
+	 reg [1:0] count = 0;
 
 
 always @(negedge VGA_VS) begin
@@ -50,16 +51,15 @@ always @(negedge VGA_VS) begin
         end   
         WALK: begin
             //update coordinates 
-            p1_x <= p1_x + WALK_SPEED;
+            p1_x <= p1_x + P1_WALK_SPEED;
 
             anim_timer1 <= anim_timer1 + 1;
 
-            if (anim_timer1 >= (40 /WALK_FRAMES - 1)) begin 
+            if (anim_timer1 >= (40 /P1_WALK_FRAMES - 1)) begin 
                 anim_timer1 <= 0;
-                if (p1_frame >= (WALK_FRAMES - 1)) 
+                if (p1_frame >= (P1_WALK_FRAMES - 1)) begin
                     p1_frame <= 0;
-                    p1_x <= 10; //change
-                else 
+                end else 
                     p1_frame <= p1_frame + 1;
             end
         end
