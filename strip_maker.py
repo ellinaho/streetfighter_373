@@ -63,4 +63,4 @@ def convert_to_vertical_strip(input_file, output_file, read_right_to_left=False)
     print(f"Success! Aligned strip saved to '{output_file}'. Guide row was clipped.")
 
 # --- Execution ---
-convert_to_vertical_strip("p1walkh.png", "p1walkv.png", read_right_to_left=False)
+convert_to_vertical_strip("p1jumph.png", "p1jumpv.png", read_right_to_left=True)

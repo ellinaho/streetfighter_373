@@ -5,7 +5,7 @@ from PIL import Image
 # =================================================================
 # CONFIGURATION
 # =================================================================
-INPUT_IMAGE = "p1_idle_4.png"  
+INPUT_IMAGE = "p1IWPJ.png"  
 OUTPUT_MIF  = "p1_rom.mif"
 
 # The 8-bit hex code your Verilog ignores (E3 is pure RGB332 Magenta)
