@@ -4,15 +4,17 @@ from PIL import Image
 # =================================================================
 # CONFIGURATION
 # =================================================================
-INPUT_IMAGE = "p1_idle_4.png"  # Your sprite sheet (e.g., 64x212 for 4 frames)
+INPUT_IMAGE = "p1_idle_ok.png"  
 OUTPUT_MIF  = "p1_rom.mif"
 
-# The light green background color you want to turn invisible (#ADF1CF)
-TARGET_BG_RGB = (173, 241, 207)
+# The background color is now Pure Magenta
+TARGET_BG_RGB = (255, 0, 255)
 
-# How "fuzzy" the match is. If you still see green edges, increase this (try 40-50).
-# If the character's skin/clothes disappear, decrease this (try 15-20).
-TOLERANCE = 30 
+# THE LEVEL-UP: 
+# 150 will aggressively kill anything remotely pink or purple. 
+# If it starts eating your character's skin/clothes, dial it back to 100.
+# If you STILL see purple fringes, crank it up to 200.
+TOLERANCE = 150 
 
 # The 8-bit hex code your Verilog ignores (E3 is pure RGB332 Magenta)
 CHROMA_KEY_HEX = "E3"
@@ -33,7 +35,6 @@ def rgb_to_rgb332(r, g, b):
 
 def generate_mif():
     try:
-        # We use RGBA to detect actual transparency if it exists in the PNG
         img = Image.open(INPUT_IMAGE).convert("RGBA")
     except FileNotFoundError:
         print(f"Error: Could not find '{INPUT_IMAGE}'.")
@@ -42,7 +43,7 @@ def generate_mif():
     width, height = img.size
     total_pixels = width * height
     
-    print(f"--- MIF GENERATOR ---")
+    print(f"--- MIF GENERATOR (MAX MAGENTA DELETION) ---")
     print(f"Image: {INPUT_IMAGE} ({width}x{height})")
     print(f"Total Depth: {total_pixels} pixels")
     print(f"Tolerance: {TOLERANCE}")
@@ -58,40 +59,35 @@ def generate_mif():
         address = 0
         removed_count = 0
 
-        # Scan through the image
         for y in range(height):
             for x in range(width):
                 r, g, b, a = img.getpixel((x, y))
                 
-                # Calculate "Color Distance" from our target green
-                # (Manhattan distance is faster and works well for this)
-                color_diff = abs(r - TARGET_BG_RGB[0]) + \
-                             abs(g - TARGET_BG_RGB[1]) + \
-                             abs(b - TARGET_BG_RGB[2])
+                # Manhattan Distance from Pure Magenta (255, 0, 255)
+                # The closer this is to 0, the more "pure magenta" the pixel is.
+                # A high tolerance catches the muddy purples from anti-aliasing.
+                color_diff = (255 - r) + g + (255 - b)
 
                 # DETERMINATION LOGIC:
                 # 1. Is it transparent in the PNG file?
-                # 2. Is it "close enough" to our target background green?
-                # 3. Is it a stray pure Magenta pixel (255, 0, 255)?
+                # 2. Is the color difference less than our massive tolerance?
                 
                 is_transparent_png = (a < 128)
-                is_fuzzy_bg_match  = (color_diff < TOLERANCE)
-                is_pure_magenta    = (r > 240 and g < 10 and b > 240)
+                is_remotely_magenta = (color_diff < TOLERANCE)
 
-                if is_transparent_png or is_fuzzy_bg_match or is_pure_magenta:
+                if is_transparent_png or is_remotely_magenta:
                     hex_color = CHROMA_KEY_HEX
                     removed_count += 1
                 else:
                     # It's a real pixel! Convert to RGB332.
                     hex_color = rgb_to_rgb332(r, g, b)
                 
-                # Write to MIF: [Address] : [HexData];
                 f.write(f"\t{address} : {hex_color};\n")
                 address += 1
                 
         f.write("END;\n")
         
-    print(f"Success! Cleaned up {removed_count} background pixels.")
+    print(f"Success! Purged {removed_count} background/halo pixels.")
     print(f"File saved as: {OUTPUT_MIF}")
 
 if __name__ == "__main__":
