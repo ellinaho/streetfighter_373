@@ -31,7 +31,7 @@ module vga_top(
     //player registers
     reg [9:0] p1_x = 10'd10; //sprite top left coordinate
     reg [9:0] p1_y = GROUND_LEVEL; 
-    reg [3:0] p1_state = WALK; 
+    reg [3:0] p1_state = PUNCH; 
     reg [3:0] p1_frame = 0;
 
     //timing
@@ -74,32 +74,32 @@ always @(negedge VGA_VS) begin
                     test_timer <= 0;
                     test_timer_on <= 0;
                 end else begin
-                    test_timer <= test_timer1 + 1;
+                    test_timer <= test_timer + 1;
                 end
 
             end else begin
-            anim_timer1 <= anim_timer1 + 1;
+					anim_timer1 <= anim_timer1 + 1;
 
-            if (anim_timer1 >= (24/(2*P1_PUNCH_FRAMES)-1)) begin
-                anim_timer1 <= 0;
-                if (~throw_done) begin //if throw not done
-                    if (p1_frame >= (PUNCH_FRAMES - 1)) begin
-                        throw_done = 1;
-                        p1_frame <= PUNCH_FRAMES -2;
-                    end else begin
-                        p1_frame <= p1_frame + 1;
-                    end
-                end else begin
-                    if (p1_frame <= 0) begin
-                        throw_done = 0;
-                        p1_frame <= 0;
-                        test_timer_on <= 1;
-                        //p1_state <= IDLE;
-                    end else begin
-                        p1_frame <= p1_frame - 1;
-                    end
-                end
-            end
+					if (anim_timer1 >= (24/(2*P1_PUNCH_FRAMES)-1)) begin
+						 anim_timer1 <= 0;
+						 if (~throw_done) begin //if throw not done
+							  if (p1_frame >= (P1_PUNCH_FRAMES - 1)) begin
+									throw_done = 1;
+									p1_frame <= P1_PUNCH_FRAMES -1;
+							  end else begin
+									p1_frame <= p1_frame + 1;
+							  end
+						 end else begin
+							  if (p1_frame <= 0) begin
+									throw_done = 0;
+									p1_frame <= 0;
+									test_timer_on <= 1;
+									//p1_state <= IDLE;
+							  end else begin
+									p1_frame <= p1_frame - 1;
+							  end
+						 end
+					end
             end
 
         end
