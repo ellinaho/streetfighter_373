@@ -12,6 +12,7 @@ module vga_top(
 );
 
     //coordinates
+    parameter GAME_W = 160;
     parameter SPRITE_H = 53;
     parameter SPRITE_W = 64;
     parameter FLOOR_Y = 110;
@@ -21,12 +22,16 @@ module vga_top(
     parameter IDLE = 0;
     parameter WALK = 1;
     parameter PUNCH = 2;
+    parameter JUMP = 3;
 
     //animations
     parameter P1_IDLE_FRAMES = 4;
     parameter P1_WALK_FRAMES = 5;
     parameter P1_WALK_SPEED = 1; //change whenever
     parameter P1_PUNCH_FRAMES = 3;
+    parameter P1_JUMP_FRAMES = 4;
+    parameter P1_JUMP_SPEED_X = 2;
+    parameter P1_JUMP_SPEED_Y = 3; 
 
     //player registers
     reg [9:0] p1_x = 10'd10; //sprite top left coordinate
@@ -37,6 +42,7 @@ module vga_top(
     //timing
     reg [3:0] anim_timer1 = 4'd0;
 	reg throw_done = 0;
+    reg up_done = 0;
 
     reg [7:0] test_timer = 7'd0;
     reg test_timer_on = 0;
@@ -57,6 +63,7 @@ always @(negedge VGA_VS) begin
         WALK: begin
             //update coordinates 
             p1_x <= p1_x + P1_WALK_SPEED;
+            //bound check CHANGE TODO
 
             anim_timer1 <= anim_timer1 + 1;
 
@@ -69,40 +76,58 @@ always @(negedge VGA_VS) begin
             end
         end
         PUNCH: begin
-            if (test_timer_on) begin
-                if (test_timer >= 120) begin
-                    test_timer <= 0;
-                    test_timer_on <= 0;
+            anim_timer1 <= anim_timer1 + 1;
+            if (anim_timer1 >= (24/(2*P1_PUNCH_FRAMES)-1)) begin
+                anim_timer1 <= 0;
+                if (~throw_done) begin //if throw not done
+                    if (p1_frame >= (P1_PUNCH_FRAMES - 1)) begin
+                        throw_done = 1;
+                        p1_frame <= P1_PUNCH_FRAMES -1;
+                    end else begin
+                        p1_frame <= p1_frame + 1;
+                    end
                 end else begin
-                    test_timer <= test_timer + 1;
+                    if (p1_frame <= 0) begin
+                        throw_done = 0;
+                        p1_frame <= 0;
+                        //p1_state <= IDLE;
+                    end else begin
+                        p1_frame <= p1_frame - 1;
+                    end
                 end
-
-            end else begin
-					anim_timer1 <= anim_timer1 + 1;
-
-					if (anim_timer1 >= (24/(2*P1_PUNCH_FRAMES)-1)) begin
-						 anim_timer1 <= 0;
-						 if (~throw_done) begin //if throw not done
-							  if (p1_frame >= (P1_PUNCH_FRAMES - 1)) begin
-									throw_done = 1;
-									p1_frame <= P1_PUNCH_FRAMES -1;
-							  end else begin
-									p1_frame <= p1_frame + 1;
-							  end
-						 end else begin
-							  if (p1_frame <= 0) begin
-									throw_done = 0;
-									p1_frame <= 0;
-									test_timer_on <= 1;
-									//p1_state <= IDLE;
-							  end else begin
-									p1_frame <= p1_frame - 1;
-							  end
-						 end
-					end
+            end
+        end
+        JUMP: 
+            //x coordinate: 
+            if (p1_x < (GAME_W - SPRITE_W)) p1_x <= p1_x + JUMP_SPEED_X;
+            
+            //animation
+            anim_timer1 <= anim_timer1 + 1;
+            if (anim_timer1 >= (48/(2*P1_JUMP_FRAMES)-1)) begin
+                anim_timer1 <= 0;
+                if (~up_done) begin //if up not done
+                    if (p1_frame >= (P1_JUMP_FRAMES - 1)) begin
+                        up_done = 1;
+                        p1_frame <= P1_JUMP_FRAMES -1;
+                    end else begin
+                        p1_y <= p1_y - JUMP_SPEED_Y;
+                        p1_frame <= p1_frame + 1;
+                    end
+                end else begin
+                    if (p1_frame <= 0) begin
+                        up_done = 0;
+                        p1_frame <= 0;
+                        p1_y <= GROUND_LEVEL;
+                        p1_x <= 10;
+                        //p1_state <= IDLE;
+                    end else begin
+                        p1_y <= p1_y + JUMP_SPEED_Y;
+                        p1_frame <= p1_frame - 1;
+                    end
+                end
             end
 
-        end
+
     endcase
 end
 //ROM WIRES

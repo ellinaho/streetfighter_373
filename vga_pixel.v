@@ -55,6 +55,7 @@ module pixel(
     parameter IDLE = 0;
     parameter WALK = 1;
     parameter PUNCH = 2;
+    parameter JUMP = 3;
 
 // ADDRESS MATH & MIRRORING ---
     wire [7:0] logic_h = h_count[9:2]; // Bits [9,8,7,6,5,4,3,2] -> Max value 159
@@ -75,6 +76,7 @@ module pixel(
             IDLE: p1_base = 0;
             WALK: p1_base = 13568;
             PUNCH: p1_base = 30528;
+            JUMP: p1_base = 40704;
             default: p1_base = 0;
         endcase
     end
