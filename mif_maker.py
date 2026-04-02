@@ -5,26 +5,26 @@ from PIL import Image
 # =================================================================
 # CONFIGURATION
 # =================================================================
-INPUT_IMAGE = "p1_idle_ok.png"  
+INPUT_IMAGE = "p1_idle_4.png"  
 OUTPUT_MIF  = "p1_rom.mif"
 
 # The 8-bit hex code your Verilog ignores (E3 is pure RGB332 Magenta)
 CHROMA_KEY_HEX = "E3"
 
-# --- THE RUTHLESS HSV HALO SETTINGS ---
+# --- THE HSV HALO SETTINGS ---
 # Hue is measured from 0.0 to 1.0. 
-# Pure Magenta is ~0.83. This range covers deep muddy purples to bright pinks.
+# Pure Magenta is ~0.83. 
+# 0.75 covers deep purples. 0.92 covers bright pinks.
 HUE_MIN = 0.72 
 HUE_MAX = 0.95 
 
-# We set these incredibly low. If a pixel has even 5% color and 2% brightness, 
-# and that color happens to be purple/magenta, it gets destroyed.
-MIN_SATURATION = 0.05 
-MIN_BRIGHTNESS = 0.02 
+# Saturation and Value thresholds (0.0 to 1.0)
+# This prevents the script from accidentally deleting pure white, black, or grey.
+MIN_SATURATION = 0.15 
+MIN_BRIGHTNESS = 0.15 
 # =================================================================
 
 def rgb_to_rgb332(r, g, b):
-    """Converts 24-bit RGB to 8-bit RGB332."""
     r_3bit = round((r * 7) / 255)
     g_3bit = round((g * 7) / 255)
     b_2bit = round((b * 3) / 255)
@@ -34,17 +34,16 @@ def generate_mif():
     try:
         img = Image.open(INPUT_IMAGE).convert("RGBA")
     except FileNotFoundError:
-        print(f"Error: Could not find '{INPUT_IMAGE}'. Make sure it is in the same folder.")
+        print(f"Error: Could not find '{INPUT_IMAGE}'.")
         sys.exit(1)
 
     width, height = img.size
     total_pixels = width * height
     
-    print(f"--- MIF GENERATOR (RUTHLESS HALO KILLER) ---")
+    print(f"--- MIF GENERATOR (HSV HUE TARGETING) ---")
     print(f"Image: {INPUT_IMAGE} ({width}x{height})")
 
     with open(OUTPUT_MIF, "w") as f:
-        # Quartus Header
         f.write(f"DEPTH = {total_pixels};\n")
         f.write("WIDTH = 8;\n")
         f.write("ADDRESS_RADIX = UNS;\n")
@@ -64,15 +63,11 @@ def generate_mif():
                 # 1. Is it a PNG transparent pixel?
                 is_transparent_png = (a < 128)
                 
-                # 2. Is it in the Purple/Magenta hue range?
+                # 2. Is it in the Purple/Magenta hue range, AND not just a dark shadow/grey?
                 is_magenta_hue = (HUE_MIN < h < HUE_MAX)
-                
-                # 3. Is it slightly colorful and slightly bright? 
-                # (This prevents pure white, pure black, or true greys from being deleted)
                 is_colorful = (s > MIN_SATURATION)
                 is_bright = (v > MIN_BRIGHTNESS)
 
-                # THE RUTHLESS KILL: If it's transparent OR (it's purple AND not absolute pure black/grey)
                 if is_transparent_png or (is_magenta_hue and is_colorful and is_bright):
                     hex_color = CHROMA_KEY_HEX
                     removed_count += 1
@@ -84,7 +79,7 @@ def generate_mif():
                 
         f.write("END;\n")
         
-    print(f"Success! Purged {removed_count} magenta/purple halo pixels.")
+    print(f"Success! Purged {removed_count} magenta/purple pixels.")
     print(f"File saved as: {OUTPUT_MIF}")
 
 if __name__ == "__main__":
