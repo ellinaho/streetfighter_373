@@ -150,7 +150,7 @@ module player_controller#(
                         // else if (kick_cmd)  outgoing_damage_val <= kick_val * kick_mul * powerUp_val;
                     end else begin
                         outgoing_damage_val <= 0;
-                        if (h_move_cmd != 0'b00) H_move_state <= MOVING;
+                        if (h_move_cmd != 2'b00) H_move_state <= MOVING;
                         else H_move_state <= IDLE;
                         if (powerUp_cmd) H_move_state <= CHARGING;
                     end
