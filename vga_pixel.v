@@ -74,7 +74,7 @@ module pixel(
         case(p1_state)
             IDLE: p1_base = 0;
             WALK: p1_base = 13568;
-            PUNCH: p1_base = 23744;
+            PUNCH: p1_base = 30528;
             default: p1_base = 0;
         endcase
     end
