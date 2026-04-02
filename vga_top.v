@@ -30,13 +30,13 @@ module vga_top(
     parameter P1_WALK_SPEED = 1; //change whenever
     parameter P1_PUNCH_FRAMES = 3;
     parameter P1_JUMP_FRAMES = 4;
-    parameter P1_JUMP_SPEED_X = 2;
-    parameter P1_JUMP_SPEED_Y = 3; 
+    parameter P1_JUMP_SPEED_X = 1;
+    parameter P1_JUMP_SPEED_Y = 2; 
 
     //player registers
     reg [9:0] p1_x = 10'd10; //sprite top left coordinate
     reg [9:0] p1_y = GROUND_LEVEL; 
-    reg [3:0] p1_state = PUNCH; 
+    reg [3:0] p1_state = JUMP; 
     reg [3:0] p1_frame = 0;
 
     //timing
@@ -97,20 +97,26 @@ always @(negedge VGA_VS) begin
                 end
             end
         end
-        JUMP: 
+        JUMP: begin
             //x coordinate: 
-            if (p1_x < (GAME_W - SPRITE_W)) p1_x <= p1_x + JUMP_SPEED_X;
+            if (p1_x < (GAME_W - SPRITE_W)) begin
+					p1_x <= p1_x + P1_JUMP_SPEED_X;
+				end
             
+				if (~up_done) begin
+					p1_y <= p1_y - P1_JUMP_SPEED_Y;
+				end else begin
+					p1_y <= p1_y + P1_JUMP_SPEED_Y;
+				end
             //animation
             anim_timer1 <= anim_timer1 + 1;
-            if (anim_timer1 >= (48/(2*P1_JUMP_FRAMES)-1)) begin
+            if (anim_timer1 >= ((p1_frame == (P1_JUMP_FRAMES -1)) ? 13:5)) begin
                 anim_timer1 <= 0;
                 if (~up_done) begin //if up not done
                     if (p1_frame >= (P1_JUMP_FRAMES - 1)) begin
                         up_done = 1;
                         p1_frame <= P1_JUMP_FRAMES -1;
                     end else begin
-                        p1_y <= p1_y - JUMP_SPEED_Y;
                         p1_frame <= p1_frame + 1;
                     end
                 end else begin
@@ -121,11 +127,11 @@ always @(negedge VGA_VS) begin
                         p1_x <= 10;
                         //p1_state <= IDLE;
                     end else begin
-                        p1_y <= p1_y + JUMP_SPEED_Y;
                         p1_frame <= p1_frame - 1;
                     end
                 end
             end
+			end
 
 
     endcase
