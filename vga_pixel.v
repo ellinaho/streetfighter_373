@@ -60,7 +60,7 @@ module pixel(
 
     wire bg_box = (logic_h < GAME_W && logic_v < GAME_H);
     wire p1_box = (logic_h >= p1_x && logic_h < p1_x + SPRITE_W && 
-                   logic_v >= p1_y && logic_V < p1_y + SPRITE_H);
+                   logic_v >= p1_y && logic_v < p1_y + SPRITE_H);
 
     // Player 1 Math
     wire [10:0] p1_local_y = logic_v - p1_y; 
