@@ -19,14 +19,17 @@ module vga_top(
     
     //player states
     parameter IDLE = 0;
+    parameter WALK = 1;
 
     //animations
     parameter P1_IDLE_FRAMES = 4;
+    parameter P1_WALK_FRAMES = 5;
+    parameter P1_WALK_SPEED = 1; //change whenever
 
     //player registers
     reg [9:0] p1_x = 10'd10; //sprite top left coordinate
     reg [9:0] p1_y = GROUND_LEVEL; 
-    reg [3:0] p1_state = IDLE; 
+    reg [3:0] p1_state = WALK; 
     reg [3:0] p1_frame = 0;
 
     //timing
@@ -45,6 +48,21 @@ always @(negedge VGA_VS) begin
                     p1_frame <= p1_frame + 1'b1;
             end
         end   
+        WALK: begin
+            //update coordinates 
+            p1_x <= p1_x + WALK_SPEED;
+
+            anim_timer1 <= anim_timer1 + 1;
+
+            if (anim_timer1 >= (40 /WALK_FRAMES - 1)) begin 
+                anim_timer1 <= 0;
+                if (p1_frame >= (WALK_FRAMES - 1)) 
+                    p1_frame <= 0;
+                    p1_x <= 10; //change
+                else 
+                    p1_frame <= p1_frame + 1;
+            end
+        end
     endcase
 end
 //ROM WIRES
