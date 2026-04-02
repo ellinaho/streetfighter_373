@@ -37,9 +37,9 @@ always @(negedge VGA_VS) begin
     case(p1_state)
         IDLE: begin
             anim_timer1 <= anim_timer1 + 1;
-            if (anim_timer1 >= (24/P1_IDLE_FRAMES - 1)) begin
+            if (anim_timer1 >= (60/P1_IDLE_FRAMES - 1)) begin
                 anim_timer1 <= 0;
-                if (p1_frame >= (IDLE_FRAMES - 1)) 
+                if (p1_frame >= (P1_IDLE_FRAMES - 1)) 
                     p1_frame <= 0;
                 else 
                     p1_frame <= p1_frame + 1'b1;
