@@ -20,11 +20,13 @@ module vga_top(
     //player states
     parameter IDLE = 0;
     parameter WALK = 1;
+    parameter PUNCH = 2;
 
     //animations
     parameter P1_IDLE_FRAMES = 4;
     parameter P1_WALK_FRAMES = 5;
     parameter P1_WALK_SPEED = 1; //change whenever
+    parameter P1_PUNCH_FRAMES = 3;
 
     //player registers
     reg [9:0] p1_x = 10'd10; //sprite top left coordinate
@@ -34,7 +36,10 @@ module vga_top(
 
     //timing
     reg [3:0] anim_timer1 = 4'd0;
-	 reg [1:0] count = 0;
+	reg throw_done = 0;
+
+    reg [7:0] test_timer = 7'd0;
+    reg test_timer_on = 0;
 
 
 always @(negedge VGA_VS) begin
@@ -62,6 +67,41 @@ always @(negedge VGA_VS) begin
                 end else 
                     p1_frame <= p1_frame + 1;
             end
+        end
+        PUNCH: begin
+            if (test_timer_on) begin
+                if (test_timer >= 120) begin
+                    test_timer <= 0;
+                    test_timer_on <= 0;
+                end else begin
+                    test_timer <= test_timer1 + 1;
+                end
+
+            end else begin
+            anim_timer1 <= anim_timer1 + 1;
+
+            if (anim_timer1 >= (24/(2*P1_PUNCH_FRAMES)-1)) begin
+                anim_timer1 <= 0;
+                if (~throw_done) begin //if throw not done
+                    if (p1_frame >= (PUNCH_FRAMES - 1)) begin
+                        throw_done = 1;
+                        p1_frame <= PUNCH_FRAMES -2;
+                    end else begin
+                        p1_frame <= p1_frame + 1;
+                    end
+                end else begin
+                    if (p1_frame <= 0) begin
+                        throw_done = 0;
+                        p1_frame <= 0;
+                        test_timer_on <= 1;
+                        //p1_state <= IDLE;
+                    end else begin
+                        p1_frame <= p1_frame - 1;
+                    end
+                end
+            end
+            end
+
         end
     endcase
 end

@@ -54,6 +54,7 @@ module pixel(
     //player state
     parameter IDLE = 0;
     parameter WALK = 1;
+    parameter PUNCH = 2;
 
 // ADDRESS MATH & MIRRORING ---
     wire [7:0] logic_h = h_count[9:2]; // Bits [9,8,7,6,5,4,3,2] -> Max value 159
@@ -73,6 +74,7 @@ module pixel(
         case(p1_state)
             IDLE: p1_base = 0;
             WALK: p1_base = 13568;
+            PUNCH: p1_base = 23744;
             default: p1_base = 0;
         endcase
     end
