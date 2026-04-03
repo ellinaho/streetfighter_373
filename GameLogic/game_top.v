@@ -92,6 +92,26 @@ module game_top(
     assign p1_powerUp_cmd = KEY[2];
     assign p1_PowerUp_val = SW[13:8];
 
+    // Player 1 HP Display (HEX7, HEX6, HEX5)
+    hp_display p1_hp_disp (
+        .hp           (p1_hp),        
+        .hex_hundreds (HEX7),
+        .hex_tens     (HEX6), 
+        .hex_ones     (HEX5)
+    );
+    
+    // Player 2 HP Display (HEX2, HEX1, HEX0)
+    hp_display p2_hp_disp (
+        .hp           (p2_hp),        
+        .hex_hundreds (HEX2),
+        .hex_tens     (HEX1), 
+        .hex_ones     (HEX0)
+    );
+
+    // Turn off the two unused displays in the middle (Separator)
+    assign HEX4 = 7'b1111111;
+    assign HEX3 = 7'b1111111;
+
     game_engine game(.clk(CLOCK_50), .rst(KEY), .p1_ready(p1_start_button), .p2_ready(p2_start_button), .restart_cmd(rematch_button_wire),
     .p1_hp(p1_hp), .p2_hp(p2_hp), .game_state_out(current_game_state), .round_reset(start_new_round_wire));
     player_controller #(.START_X(p1_start_x), .START_FACING(1)) p1(
