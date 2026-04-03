@@ -28,7 +28,7 @@ module vga_top(
     parameter P1_IDLE_FRAMES = 4;
     parameter P1_WALK_FRAMES = 5;
     parameter P1_WALK_SPEED = 1; //change whenever
-    parameter P1_PUNCH_FRAMES = 3;
+    parameter P1_PUNCH_FRAMES = 2;
     parameter P1_JUMP_FRAMES = 4;
     parameter P1_JUMP_SPEED_X = 1;
     parameter P1_JUMP_SPEED_Y = 2; 
