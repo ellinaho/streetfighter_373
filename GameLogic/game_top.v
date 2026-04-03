@@ -1,7 +1,7 @@
 module game_top(
     // --- System Essentials ---
     input  wire        CLOCK_50,
-    input  wire [0:0]  KEY,      // KEY[0] will be our physical reset button
+    input  wire [4:0]  KEY,      // KEY[0] will be our physical reset button
 
     // --- VGA Display Physical Pins ---
     output wire [7:0]  VGA_R,    // 8-bit Red video signal
@@ -21,7 +21,9 @@ module game_top(
 
     //Testing with LEDs
     output wire [17:0] LEDR,
-    output wire [8:0]  LEDG
+    output wire [8:0]  LEDG,
+
+    input  wire [17:0] SW
 );
 
     wire p1_start_button;
@@ -35,8 +37,8 @@ module game_top(
     wire [1:0] current_game_state;
     wire start_new_round_wire; // Comes from Engine, goes to Players
 
-    localparam p1_start_x = 30;
-    localparam p2_start_x = 600;
+    localparam p1_start_x = 300;
+    localparam p2_start_x = 320;
 
     // wire p1_jump_cmd, p1_punch_cmd, p1_kick_cmd, p1_powerUp_cmd, p1_take_hit, p1_facing_right;
     wire p1_jump_cmd, p1_punch_cmd, p1_powerUp_cmd, p1_take_hit, p1_facing_right;
@@ -44,7 +46,7 @@ module game_top(
     // wire [2:0] p1_punch_val, p1_kick_val, p1_powerUp_val;
     wire [3:0] p1_H_speed, p1_punch_val;
     wire [6:0] p1_incoming_damage_val, p1_outgoing_damage_val;
-    wire [7:0] p1_powerUp_val;
+    wire [5:0] p1_powerUp_val;
     wire [9:0] p1_x, p1_y;
 
     // wire p1_is_punching, p1_is_kicking;
@@ -56,7 +58,7 @@ module game_top(
     // wire [2:0] p2_punch_val, p2_kick_val, p2_powerUp_val;
     wire [3:0] p2_H_speed, p2_punch_val;
     wire [6:0] p2_incoming_damage_val, p2_outgoing_damage_val;
-    wire [7:0] p2_powerUp_val;
+    wire [5:0] p2_powerUp_val;
     wire [9:0] p2_x, p2_y;
 
     // wire p2_is_punching, p2_is_kicking;
@@ -73,13 +75,22 @@ module game_top(
     // assign p2_take_hit = p1_hit_p2_lower | p1_hit_p2_upper;
 
     // Testing SPI Logic
-    assign LEDR[1:0]    =   p1_h_move;
-    assign LEDR[4]      =   p1_jump_cmd;
-    assign LEDR[5]      =   p1_punch_cmd;
-    assign LEDR[9:6]   =   p1_punch_val;
-    assign LEDR[10]     =   p1_powerUp_cmd;
-    assign LEDR[16:11]  =   p1_powerUp_val;
-    assign LEDG[1:0]    =   p2_h_move;
+    // assign LEDR[1:0]    =   p1_h_move;
+    // assign LEDR[4]      =   p1_jump_cmd;
+    // assign LEDR[5]      =   p1_punch_cmd;
+    // assign LEDR[9:6]    =   p1_punch_val;
+    // assign LEDR[10]     =   p1_powerUp_cmd;
+    // assign LEDR[16:11]  =   p1_powerUp_val;
+    // assign LEDG[1:0]    =   p2_h_move;
+
+    assign p1_punch_cmd    =   KEY[1];
+    assign p1_jump_cmd    =   KEY[3];
+
+    assign p1_punch_val =   SW[3:0];
+    assign p2_punch_val =   SW[7:4];
+    
+    assign p1_powerUp_cmd = KEY[2];
+    assign p1_PowerUp_val = SW[13:8];
 
     game_engine game(.clk(CLOCK_50), .rst(KEY), .p1_ready(p1_start_button), .p2_ready(p2_start_button), .restart_cmd(rematch_button_wire),
     .p1_hp(p1_hp), .p2_hp(p2_hp), .game_state_out(current_game_state), .round_reset(start_new_round_wire));
@@ -114,14 +125,14 @@ module game_top(
         // .p2_hit_p1_upper(p2_hit_p1_upper), .p2_hit_p1_lower(p2_hit_p1_lower)
         .p1_hit_p2(p1_hit_p2), .p2_hit_p1(p2_hit_p1)
     );
-    SPI_slave spi_connect(
-        .sys_clk(CLOCK_50), .SCLK(SPI_SCLK), .MOSI(SPI_MOSI), .SS(SPI_CS),
-        .MISO(.SPI_MISO), .p1_H_move_cmd(p1_h_move), .p1_jump_cmd(p1_jump_cmd),
-        .p1_punch_valid(p1_punch_cmd), .p1_punch_val(p1_punch_val),
-        .p1_PowerUp_valid(p1_powerUp_cmd), .p1_PowerUp_val(p1_powerUp_val),
-        .p2_H_move_cmd(p2_h_move), .p2_jump_cmd(p2_jump_cmd),
-        .p2_punch_valid(p2_punch_cmd), .p2_punch_val(p2_punch_val),
-        .p2_PowerUp_valid(p2_powerUp_cmd), .p2_PowerUp_val(p2_powerUp_val),
-        .p1_win_in(p2_dead), .p2_win_in(p1_dead), .p1_hit_p2(p1_hit_p2), .p2_hit_p1(p2_hit_p1)
-    );
+    // SPI_slave spi_connect(
+    //     .sys_clk(CLOCK_50), .SCLK(SPI_SCLK), .MOSI(SPI_MOSI), .SS(SPI_CS),
+    //     .MISO(.SPI_MISO), .p1_H_move_cmd(p1_h_move), .p1_jump_cmd(p1_jump_cmd),
+    //     .p1_punch_valid(p1_punch_cmd), .p1_punch_val(p1_punch_val),
+    //     .p1_PowerUp_valid(p1_powerUp_cmd), .p1_PowerUp_val(p1_powerUp_val),
+    //     .p2_H_move_cmd(p2_h_move), .p2_jump_cmd(p2_jump_cmd),
+    //     .p2_punch_valid(p2_punch_cmd), .p2_punch_val(p2_punch_val),
+    //     .p2_PowerUp_valid(p2_powerUp_cmd), .p2_PowerUp_val(p2_powerUp_val),
+    //     .p1_win_in(p2_dead), .p2_win_in(p1_dead), .p1_hit_p2(p1_hit_p2), .p2_hit_p1(p2_hit_p1)
+    // );
 endmodule

@@ -14,7 +14,7 @@ module spi_slave (
     output reg       p1_punch_valid,
     output reg [3:0] p1_punch_val,      // Increased to 4 bits for base damage
     output reg       p1_PowerUp_valid,
-    output reg [7:0] p1_PowerUp_val,    // Expanded to 8 bits for integer float math (e.g. 24 = 2.4x)
+    output reg [5:0] p1_PowerUp_val,    // Expanded to 8 bits for integer float math (e.g. 24 = 2.4x)
 
     // --- OUTGOING COMMANDS: Player 2 (To p2_controller) ---
     output reg [1:0] p2_H_move_cmd,
@@ -22,7 +22,7 @@ module spi_slave (
     output reg       p2_punch_valid,
     output reg [3:0] p2_punch_val,      // Increased to 4 bits
     output reg       p2_PowerUp_valid,
-    output reg [7:0] p2_PowerUp_val,    // Expanded to 8 bits 
+    output reg [5:0] p2_PowerUp_val,    // Expanded to 8 bits 
 
     // --- INCOMING TELEMETRY: Game State (From Engine/Referee) ---
     // input wire [6:0] p1_hp_in,
@@ -109,8 +109,8 @@ module spi_slave (
                 end
 
                 2:  begin   // Power-up Multiplier
-                    if (p1_active) p1_PowerUp_val  <= byte_to_process;
-                    else if (p2_active) p2_PowerUp_val  <= byte_to_process;
+                    if (p1_active) p1_PowerUp_val  <= byte_to_process[7:3];
+                    else if (p2_active) p2_PowerUp_val  <= byte_to_process[7:3];
                     byte_count <= 3;
                 end
 

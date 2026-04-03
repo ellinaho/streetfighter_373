@@ -38,7 +38,7 @@ module player_controller#(
     input wire [3:0] H_speed,
     // input wire [3:0] V_speed,
     input wire       powerUp_cmd,
-    input wire [7:0] powerUp_val,
+    input wire [5:0] powerUp_val,
     
     // --- 2. INCOMING COMBAT (From Referee & Opponent) ---
     // We replace all specific p1/p2 signals with a generic "I got hit" pulse
