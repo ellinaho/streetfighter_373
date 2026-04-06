@@ -114,10 +114,10 @@ int main(void)
 	  joystick_val = HAL_ADC_GetValue(&hadc1);
 	  jump = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_5);
 
-    if (joystick_val > 1850){
+    if (joystick_val > 2050){
       p1_move = 1;
     }
-    else if (joystick_val < 1750){
+    else if (joystick_val < 1925){
       p1_move = -1;
     }
     else {
