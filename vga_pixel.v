@@ -67,11 +67,8 @@ module pixel(
     assign VGA_SYNC_N = 1'b1;
 
 
-//game parameters 
+//helpers
     parameter TRANSPARENT = 8'hE3; //magenta
-    parameter GAME_W = 160, GAME_H = 120;
-    
-    parameter START = 0, GAME = 1, KO = 2;
 
     function in_box;
         input [9:0] px;    // current VGA X
@@ -90,14 +87,16 @@ module pixel(
     wire [7:0] logic_h = logic_h[9:2]; // Bits [9,8,7,6,5,4,3,2] -> Max value 159
     wire [6:0] logic_v = logic_v[9:2]; // Bits [9,8,7,6,5,4,3,2] -> Max value 119
 
-//player boxes
+//player sprite boxes
     parameter SPRITE_H = 53, SPRITE_W = 64;
     wire p1_box = in_box(logic_h, logic_v, p1_x, p1_y, SPRITE_W, SPRITE_H);
     wire p2_box = in_box(logic_h, logic_v, p2_x, p2_y, SPRITE_W, SPRITE_H);
 
-//HP bars 
+//HP bar boxes
+
     parameter P1_HP_X_START = 21, P2_HP_X_END = 138, HP_Y = 6;
     parameter HP_W = 50, HP_H = 3;
+
     wire p1_hp_fill = in_box(logic_h, logic_v, P1_HP_X_START, HP_Y, p1_hp, HP_H);  
     wire p2_hp_fill = in_box(logic_h, logic_v, (P2_HP_X_END - p2_hp), HP_Y, p2_hp, HP_H);
     wire p1_hp_inner = in_box(logic_h, logic_v, P1_HP_X_START, HP_Y, HP_W, HP_H); 
@@ -107,8 +106,9 @@ module pixel(
     wire p1_hp_border = p1_hp_outter && ~p1_hp_inner;
     wire p2_hp_border = p2_hp_outter && ~p2_hp_inner;
 
-//charging bars 
+//charging bar boxes
     parameter MUSCLE_X = 16, MUSCLE_Y = 4, MUSCLE_W = 32, MUSCLE_H = 3; //muscle y from top of sprite
+    
     wire p1_muscle_fill = in_box(logic_h, logic_v, p1_x + MUSCLE_X, p1_y - MUSCLE_Y, p1_charge, MUSCLE_H);  
     wire p1_muscle_inner = in_box(logic_h, logic_v, p1_x + MUSCLE_X, p1_y - MUSCLE_Y, MUSCLE_W, MUSCLE_H); 
     wire p1_muscle_outer = in_box(logic_h, logic_v, p1_x + MUSCLE_X - 1, p1_y - MUSCLE_Y - 1, MUSCLE_W + 2, MUSCLE_H + 2); 
@@ -119,13 +119,20 @@ module pixel(
     wire p2_muscle_outer = in_box(logic_h, logic_v, p2_x + MUSCLE_X - 1, p2_y - MUSCLE_Y - 1, MUSCLE_W + 2, MUSCLE_H + 2); 
     wire p2_muscle_border = p2_muscle_outter && ~p2_muscle_inner;
 
-//player pfp ?
+//bg, time, title, ko, pfps boxes
+    //background
+    parameter GAME_W = 160, GAME_H = 120;
+    wire bg_box = in_box(logic_h, logic_v, 0, 0, GAME_W, GAME_H);
+
+    //titles
+    wire title_box = in_box(); //change todo
+    
+    //pfps
     parameter PFP_Y = 5, PFP_X1 = 5, PFP_X2 = 141, PFP_W = 14, PFP_H = 17;
     wire p1_pfp_box = in_box(logic_h, logic_v, PFP_X1, PFP_Y, PFP_W, PFP_H); 
     wire p2_pfp_box = in_box(logic_h, logic_v, PFP_X2, PFP_Y, PFP_W, PFP_H); 
 
-//other elements
-    wire title_box = in_box(); //change todo
+    //KO box
     parameter KO_X = 38, KO_Y = 42, KO_W = 80, KO_H = 53;
     wire ko_box = in_box(logic_h, logic_v, KO_X, KO_Y, KO_W, KO_H);
 
@@ -135,7 +142,6 @@ module pixel(
     wire time_inner = in_box(logic_h, logic_v, TIME_X, TIME_Y, TIME_W, TIME_H);   
     wire time_outer = in_box(logic_h, logic_v, TIME_X, TIME_Y-1, TIME_W, TIME_H+2);   
     wire time_border = time_outter && ~time_inner;
-
 
 //Choosing animation base addr
     parameter IDLE = 0, WALK = 1, PUNCH = 2, JUMP = 3; 
@@ -181,8 +187,10 @@ module pixel(
     wire [9:0]  p2_read_x = (p2_dir == LEFT) ? ((SPRITE_W - 1) - p2_local_x) : p2_local_x;
 
     always @(*) begin
-        //if (bg_box) bg_rom_addr = (logic_v * GAME_W) + logic_h;
-        //else bg_rom_addr = 0;
+
+        if (bg_box) bg_rom_addr = (logic_v * GAME_W) + logic_h;
+        else bg_rom_addr = 0;
+
         if (p1_box) p1_rom_addr = p1_base + (p1_frame * PIXELS_PER_FRAME) + (p1_local_y * SPRITE_W) + p1_read_x;
         else p1_rom_addr = 0;
 
@@ -193,12 +201,13 @@ module pixel(
         else if (p2_pfp_box) elem_rom_addr = 14 * 17 + (logic_v - 5) * 14 + (logic_h - 141);
         else if (title_box) elem_rom_addr = ?
         else if (ko_box) elem_rom_addr = ?
+        else elem_rom_addr = 0;
 
     end
 
-
-
 // LAYERING 
+    parameter START = 0, GAME = 1, KO = 2;
+
     reg [7:0] final_color_8bit;
     always @(*) begin
         if (VGA_BLANK_N) begin
@@ -235,7 +244,7 @@ module pixel(
         end else begin final_color_8bit = 8'h00; end
     end
 
-    // --- PART 6: COLOR DECODER ---
+// COLOR DECODER, write to vga
     always @(*) begin
         case(final_color_8bit)
             8'h00: begin VGA_R = 10'd0;    VGA_G = 10'd0;    VGA_B = 10'd0;    end // Black
