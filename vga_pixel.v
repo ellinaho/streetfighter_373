@@ -5,18 +5,18 @@ module pixel(
     output reg [14:0] bg_rom_addr, 
     output reg [16:0] p1_rom_addr, 
     output reg [16:0] p2_rom_addr, 
-    //output reg [16:0] elem_rom_addr,
+    output reg [16:0] elem_rom_addr,
     input [7:0] bg_rom_data, 
     input [7:0] p1_rom_data, 
     input [7:0] p2_rom_data, 
-    //input [7:0] elem_rom_data,
+    input [7:0] elem_rom_data,
 
     //player info
     input [9:0] p1_x, 
     input [9:0] p1_y, 
     input [3:0] p1_state,  
     input [3:0] p1_frame,   
-    input [7:0] p1_hp, //change bit size
+    input [5:0] p1_hp, //change bit size
     input p1_charging,
     input [4:0] p1_charge, //change bit size
     input p1_dir,
@@ -25,7 +25,7 @@ module pixel(
     input [9:0] p2_y, 
     input [3:0] p2_state,  
     input [3:0] p2_frame,   
-    input [7:0] p2_hp,
+    input [5:0] p2_hp,
     input p2_charging,
     input [4:0] p2_charge, //change bit size
     input p2_dir,
@@ -93,7 +93,7 @@ module pixel(
 
 //HP bar boxes
 
-    parameter P1_HP_X_START = 21, P2_HP_X_END = 138, HP_Y = 6;
+    parameter P1_HP_X_START = 21, P2_HP_X_END = 138, HP_Y = 8;
     parameter HP_W = 50, HP_H = 3;
 
     wire p1_hp_fill = in_box(logic_h, logic_v, P1_HP_X_START, HP_Y, p1_hp, HP_H);  
@@ -132,7 +132,7 @@ module pixel(
     wire instr_box = in_box(logic_h, logic_v, INSTR_X, INSTR_Y, INSTR_W, INSTR_H);
 
     //pfps
-    parameter PFP_Y = 5, PFP_X1 = 5, PFP_X2 = 141, PFP_W = 14, PFP_H = 17;
+    parameter PFP_Y = 7, PFP_X1 = 5, PFP_X2 = 141, PFP_W = 14, PFP_H = 17;
     wire p1_pfp_box = in_box(logic_h, logic_v, PFP_X1, PFP_Y, PFP_W, PFP_H); 
     wire p2_pfp_box = in_box(logic_h, logic_v, PFP_X2, PFP_Y, PFP_W, PFP_H); 
 

@@ -14,11 +14,11 @@ module vga_top(
 //Sprite and background dimensions & coordinates
     parameter GAME_W = 160, GAME_H = 120;
     parameter SPRITE_H = 53, SPRITE_W = 64;
-    parameter FLOOR_Y = 110;
+    parameter FLOOR_Y = 115;
     parameter GROUND_LEVEL = FLOOR_Y - SPRITE_H;
 
 //p1 and p2 and game registers
-    reg [9:0] p1_x = 10'd10; //sprite top left coordinate
+    reg [9:0] p1_x = 10'd0; //sprite top left coordinate
     reg [9:0] p1_y = GROUND_LEVEL; 
     reg [3:0] p1_state = IDLE; 
     reg [3:0] p1_frame = 0;
@@ -26,17 +26,17 @@ module vga_top(
     reg [4:0] p1_charge = 15;
     reg [5:0] p1_hp = 20;
 
-    reg [9:0] p2_x = 10'd65; //sprite top left coordinate
+    reg [9:0] p2_x = 10'd96; //sprite top left coordinate
     reg [9:0] p2_y = GROUND_LEVEL; 
-    reg [3:0] p2_state = LOSE; 
+    reg [3:0] p2_state = IDLE; 
     reg [3:0] p2_frame = 0;
-    reg p2_charging = 0;
+    reg p2_charging = 1;
     reg [4:0] p2_charge = 15;
     reg [5:0] p2_hp = 20;
 
-    reg [1:0] game_state = 1; 
-    reg p1_dir = 1; //0 is facing right?
-    reg p2_dir = 0;  
+    reg [1:0] game_state = 0; 
+    reg p1_dir = 0; //0 is facing right?
+    reg p2_dir = 1;  
 	reg [6:0] time_left = 14;
 
 //Animations, dealing with frames
@@ -415,8 +415,8 @@ end
         .p1_rom_data(p1_rom_data),
         .p2_rom_addr(p2_rom_addr),
         .p2_rom_data(p2_rom_data),
-        //.elem_rom_addr(elem_rom_addr),
-        //.elem_rom_data(elem_rom_data),
+        .elem_rom_addr(elem_rom_addr),
+        .elem_rom_data(elem_rom_data),
 
         .p1_x       (p1_x),
         .p1_y       (p1_y),
