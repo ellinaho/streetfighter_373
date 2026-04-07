@@ -11,25 +11,23 @@ OUTPUT_MIF  = "p2.mif"
 # The 8-bit hex code your Verilog ignores (E3 is pure RGB332 Magenta)
 CHROMA_KEY_HEX = "E3"
 
-# --- THE HSV HALO SETTINGS (Tightened to protect red/pink clothes) ---
-HUE_MIN = 0.80 
-HUE_MAX = 0.88 
-MIN_SATURATION = 0.50 
-MIN_BRIGHTNESS = 0.50 
+# --- THE HSV HALO SETTINGS ---
+# Hue is measured from 0.0 to 1.0. 
+# Pure Magenta is ~0.83. 
+# 0.75 covers deep purples. 0.92 covers bright pinks.
+HUE_MIN = 0.72 
+HUE_MAX = 0.95 
+
+# Saturation and Value thresholds (0.0 to 1.0)
+# This prevents the script from accidentally deleting pure white, black, or grey.
+MIN_SATURATION = 0.15 
+MIN_BRIGHTNESS = 0.15 
 # =================================================================
 
 def rgb_to_rgb332(r, g, b):
     r_3bit = round((r * 7) / 255)
     g_3bit = round((g * 7) / 255)
-    
-    # THE BLUE NOISE KILLER
-    # If the blue value is low (just a shadow), crush it to 0. 
-    # This mathematically prevents 2-bit blue from rounding up to 33% intensity
-    if b < 50:
-        b_2bit = 0
-    else:
-        b_2bit = round((b * 3) / 255)
-        
+    b_2bit = round((b * 3) / 255)
     return f"{(r_3bit << 5) | (g_3bit << 2) | b_2bit:02X}"
 
 def generate_mif():
@@ -42,7 +40,7 @@ def generate_mif():
     width, height = img.size
     total_pixels = width * height
     
-    print(f"--- MIF GENERATOR (HSV & NOISE FILTER) ---")
+    print(f"--- MIF GENERATOR (HSV HUE TARGETING) ---")
     print(f"Image: {INPUT_IMAGE} ({width}x{height})")
 
     with open(OUTPUT_MIF, "w") as f:
@@ -65,7 +63,7 @@ def generate_mif():
                 # 1. Is it a PNG transparent pixel?
                 is_transparent_png = (a < 128)
                 
-                # 2. Is it the Magenta Background? (Using the tightened settings)
+                # 2. Is it in the Purple/Magenta hue range, AND not just a dark shadow/grey?
                 is_magenta_hue = (HUE_MIN < h < HUE_MAX)
                 is_colorful = (s > MIN_SATURATION)
                 is_bright = (v > MIN_BRIGHTNESS)
@@ -81,7 +79,7 @@ def generate_mif():
                 
         f.write("END;\n")
         
-    print(f"Success! Purged {removed_count} background pixels.")
+    print(f"Success! Purged {removed_count} magenta/purple pixels.")
     print(f"File saved as: {OUTPUT_MIF}")
 
 if __name__ == "__main__":
