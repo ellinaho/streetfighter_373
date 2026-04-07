@@ -5,8 +5,8 @@ from PIL import Image
 # =================================================================
 # CONFIGURATION
 # =================================================================
-INPUT_IMAGE = "instr.png"  
-OUTPUT_MIF  = "instr.mif"
+INPUT_IMAGE = "title.png"  
+OUTPUT_MIF  = "title.mif"
 
 # The 8-bit hex code your Verilog ignores (E3 is pure RGB332 Magenta)
 CHROMA_KEY_HEX = "E3"
