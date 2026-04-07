@@ -106,7 +106,7 @@ module pixel(
     wire p2_hp_border = p2_hp_outer && ~p2_hp_inner;
 
 //charging bar boxes
-    parameter MUSCLE_X = 16, MUSCLE_Y = 4, MUSCLE_W = 32, MUSCLE_H = 3; //muscle y from top of sprite
+    parameter MUSCLE_X = 16, MUSCLE_Y = 0, MUSCLE_W = 32, MUSCLE_H = 3; //muscle y from top of sprite
     
     wire p1_muscle_fill = in_box(logic_h, logic_v, p1_x + MUSCLE_X, p1_y - MUSCLE_Y, p1_charge, MUSCLE_H);  
     wire p1_muscle_inner = in_box(logic_h, logic_v, p1_x + MUSCLE_X, p1_y - MUSCLE_Y, MUSCLE_W, MUSCLE_H); 
