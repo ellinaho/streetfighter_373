@@ -13,7 +13,6 @@ FRAME_SEQUENCE = [
     "ko.png",
     "instr.png"
 ]  
-
 OUTPUT_MIF  = "element.mif"
 
 # The 8-bit hex code your Verilog ignores (E3 is pure RGB332 Magenta)
@@ -22,8 +21,8 @@ CHROMA_KEY_HEX = "E3"
 # --- THE HSV HALO SETTINGS (YOUR EXACT SETTINGS) ---
 HUE_MIN = 0.72 
 HUE_MAX = 0.95 
-MIN_SATURATION = 0.15 
-MIN_BRIGHTNESS = 0.15 
+MIN_SATURATION = 0.4 
+MIN_BRIGHTNESS = 0.5
 # =================================================================
 
 def rgb_to_rgb332(r, g, b):
@@ -37,7 +36,7 @@ def rgb_to_rgb332(r, g, b):
     
     return f"{(r_3bit << 5) | (g_3bit << 2) | b_2bit:02X}"
 
-def generate_dynamic_mif():
+def generate_stitched_mif():
     print(f"--- MIF GENERATOR (YOUR HSV LOGIC + VARIABLE SIZE STITCHER) ---")
     
     all_hex_pixels = []
@@ -115,4 +114,4 @@ def generate_dynamic_mif():
     print("end\n")
 
 if __name__ == "__main__":
-    generate_dynamic_mif()
+    generate_stitched_mif()
