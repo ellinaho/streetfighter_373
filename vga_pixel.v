@@ -106,7 +106,7 @@ module pixel(
     wire p2_hp_border = p2_hp_outer && ~p2_hp_inner;
 
 //charging bar boxes
-    parameter MUSCLE_X = 16, MUSCLE_Y = 0, MUSCLE_W = 32, MUSCLE_H = 3; //muscle y from top of sprite
+    parameter MUSCLE_X = 16, MUSCLE_Y = 0, MUSCLE_W = 25, MUSCLE_H = 3; //muscle y from top of sprite
     
     wire p1_muscle_fill = in_box(logic_h, logic_v, p1_x + MUSCLE_X, p1_y - MUSCLE_Y, p1_charge, MUSCLE_H);  
     wire p1_muscle_inner = in_box(logic_h, logic_v, p1_x + MUSCLE_X, p1_y - MUSCLE_Y, MUSCLE_W, MUSCLE_H); 
@@ -124,8 +124,13 @@ module pixel(
     wire bg_box = in_box(logic_h, logic_v, 0, 0, GAME_W, GAME_H);
 
     //titles
-    //wire title_box = in_box(); //change todo
+    parameter TITLE_X = 11, TITLE_Y = 46, TITLE_W = 142, TITLE_H = 28;
+    wire title_box = in_box(logic_h, logic_v, TITLE_X, TITLE_Y, TITLE_W, TITLE_H); 
     
+    //instr
+    parameter INSTR_X = 48, INSTR_Y = 89, INSTR_W = 64, INSTR_H = 13;
+    wire instr_box = in_box(logic_h, logic_v, INSTR_X, INSTR_Y, INSTR_W, INSTR_H);
+
     //pfps
     parameter PFP_Y = 5, PFP_X1 = 5, PFP_X2 = 141, PFP_W = 14, PFP_H = 17;
     wire p1_pfp_box = in_box(logic_h, logic_v, PFP_X1, PFP_Y, PFP_W, PFP_H); 
@@ -196,13 +201,12 @@ module pixel(
         if (p2_box) p2_rom_addr = p2_base + (p2_frame * PIXELS_PER_FRAME) + (p2_local_y * SPRITE_W) + p2_read_x;
         else p2_rom_addr = 0;
 
-		  /*
-        if (p1_pfp_box) elem_rom_addr = (logic_v - 5) * 14 + (logic_h - 5);
-        else if (p2_pfp_box) elem_rom_addr = 14 * 17 + (logic_v - 5) * 14 + (logic_h - 141);
-        else if (title_box) elem_rom_addr = ?
-        else if (ko_box) elem_rom_addr = ?
+        if (p1_pfp_box) elem_rom_addr = (logic_v - PFP_Y) * PFP_W + (logic_h - PFP_X1);
+        else if (p2_pfp_box) elem_rom_addr = 238 + (logic_v - PFP_Y) * PFP_W + (logic_h - PFP_X2);
+        else if (title_box) elem_rom_addr = 476 + (logic_v - TITLE_Y) * TITLE_W + (logic_h - TITLE_X);
+        else if (ko_box) elem_rom_addr = 4452 + (logic_v - KO_Y) * KO_W + (logic_h - KO_X);
+        else if (instr_box) elem_rom_addr = 8639 + (logic_v - INSTR_Y) * INSTR_W + (logic_h - INSTR_X);
         else elem_rom_addr = 0;
-		  */
 
     end
 
@@ -218,7 +222,7 @@ module pixel(
 
             if (game_state == START) begin
                 //streetfighter 373, flex to start game
-                //if (title_box && elem_rom_data != TRANSPARENT) begin final_color_8bit = elem_rom_data; end
+                if (title_box || instr_box && elem_rom_data != TRANSPARENT) begin final_color_8bit = elem_rom_data; end
             end
             if (game_state == START || game_state == GAME) begin
                 //muscle chargeup
@@ -232,14 +236,14 @@ module pixel(
                 if (p1_hp_fill || p2_hp_fill) begin final_color_8bit = 8'hA2; end //yellow
                 if (p1_hp_border || p2_hp_border) begin final_color_8bit = 8'hFF; end //white
                 //pfps
-                //if ((p1_pfp_box || p2_pfp_box) && elem_rom_data != TRANSPARENT) begin final_color_8bit = elem_rom_data; end
+                if ((p1_pfp_box || p2_pfp_box) && elem_rom_data != TRANSPARENT) begin final_color_8bit = elem_rom_data; end
                 //time
                 if (time_fill) begin final_color_8bit = 8'hA8; end 
                 if (time_border) begin final_color_8bit = 8'hFF; end //white
             end
             if (game_state == KO) begin 
                 //ko screen
-                //if (ko_box && elem_rom_data != TRANSPARENT) begin final_color_8bit = elem_rom_data; end 
+                if (ko_box && elem_rom_data != TRANSPARENT) begin final_color_8bit = elem_rom_data; end 
             end
 
         end else begin final_color_8bit = 8'h00; end
