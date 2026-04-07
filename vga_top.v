@@ -20,23 +20,29 @@ module vga_top(
 //p1 and p2 and game registers
     reg [9:0] p1_x = 10'd10; //sprite top left coordinate
     reg [9:0] p1_y = GROUND_LEVEL; 
-    reg [3:0] p1_state = JUMP; 
+    reg [3:0] p1_state = IDLE; 
     reg [3:0] p1_frame = 0;
+	 reg p1_charging = 0;
+	 reg [4:0] p1_charge;
+	 
 
-    reg [9:0] p2_x = 10'd10; //sprite top left coordinate
+    reg [9:0] p2_x = 10'd65; //sprite top left coordinate
     reg [9:0] p2_y = GROUND_LEVEL; 
-    reg [3:0] p2_state = JUMP; 
+    reg [3:0] p2_state = WIN; 
     reg [3:0] p2_frame = 0;
+	 reg p2_charging = 0;
+	 reg [4:0] p2_charge;
 
-    reg [1:0] game_state = 0; 
-    reg p1_dir = 0; //0 is right?
-    reg p2_dir = 0;
+    reg [1:0] game_state = 1; 
+    reg p1_dir = 0; //0 is facing right?
+    reg p2_dir = 1;  
+	 reg [6:0] time_left = 96;
 
 //Animations, dealing with frames
     parameter IDLE_FRAMES = 4;
     parameter WALK_FRAMES = 5, WALK_SPEED = 1; //change whenever
     parameter PUNCH_FRAMES = 2;
-    parameter P1_JUMP_FRAMES = 4, P2_JUMP_FRAMES = 6,  
+    parameter P1_JUMP_FRAMES = 4, P2_JUMP_FRAMES = 6;
     parameter JUMP_SPEED_X = 1, JUMP_SPEED_Y = 2; 
     parameter P1_JUMP_PUNCH_FRAMES = 5, P2_JUMP_PUNCH_FRAMES = 8;
     parameter GOT_HIT_FRAMES = 2;
@@ -320,9 +326,9 @@ module vga_top(
                 if (anim_timer2 >= ((p2_frame == (P2_JUMP_PUNCH_FRAMES - 1)) ? 10 : 2)) begin
                     anim_timer2 <= 0;
                     if (~p2_half_done) begin //if up not done
-                        if (p2_frame >= (P2_JUMP_PUUNCH_FRAMES - 1)) begin
+                        if (p2_frame >= (P2_JUMP_PUNCH_FRAMES - 1)) begin
                             p2_half_done = 1;
-                            p2_frame <= P2_JUMP_PUUNCH_FRAMES -1;
+                            p2_frame <= P2_JUMP_PUNCH_FRAMES -1;
                         end else begin
                             p2_frame <= p2_frame + 1;
                         end
@@ -398,7 +404,7 @@ end
     p1_rom player1_memory (.address(p1_rom_addr), .clock(CLOCK_50), .q(p1_rom_data));
     p2_rom player2_memory (.address(p2_rom_addr), .clock(CLOCK_50), .q(p2_rom_data));
     bg_rom background_memory (.address(bg_rom_addr), .clock(CLOCK_50), .q(bg_rom_data));
-    elem_rom element_memory (.address(elem_rom_addr), .clock(CLOCK_50), .q(elem_rom_data));
+    //elem_rom element_memory (.address(elem_rom_addr), .clock(CLOCK_50), .q(elem_rom_data));
 
 //call graphics, TODO: ensure inputs are all right
     pixel my_pixel (
@@ -409,8 +415,8 @@ end
         .p1_rom_data(p1_rom_data),
         .p2_rom_addr(p2_rom_addr),
         .p2_rom_data(p2_rom_data),
-        .elem_rom_addr(elem_rom_addr),
-        .elem_rom_data(elem_rom_data),
+        //.elem_rom_addr(elem_rom_addr),
+        //.elem_rom_data(elem_rom_data),
 
         .p1_x       (p1_x),
         .p1_y       (p1_y),
@@ -429,6 +435,8 @@ end
         .p2_charge  (p2_charge),
         .p2_charging(p2_charging),
         .p2_dir     (p2_dir),
+		  
+		  .time_left  (time_left),
         
         .VGA_HS     (VGA_HS),
         .VGA_VS     (VGA_VS),
