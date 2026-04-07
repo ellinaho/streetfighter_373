@@ -6,23 +6,38 @@ def convert_to_vertical_strip(input_file, output_file, read_right_to_left=False)
     SPRITE_W = 188
     SPRITE_H = 156
     ANCHOR_X = 94   # Horizontal Center
-    # We want row (anchor_y - 1) to be the bottom of our 156px box
-    # So we set the target for the feet, not the guide row.
     FEET_Y   = 155  
-    CYAN     = (0, 255, 255) 
+    
+    # --- Color Definitions ---
+    CYAN = (0, 255, 255) 
+    TARGET_BG = (173, 241, 207)       # Hex: ADF1CF
+    NEON_MAGENTA = (255, 0, 255, 255) # Hex: FF00FF (with 255 for full alpha)
 
     print(f"Loading '{input_file}'...")
     img = Image.open(input_file).convert("RGBA")
     pixels = img.load()
 
-    # 1. Find the neon cyan anchor pixels
+    # 1. Find the neon cyan anchors AND replace the background color
     anchors = []
+    replaced_count = 0
+    
     for y in range(img.height):
         for x in range(img.width):
-            if pixels[x, y][:3] == CYAN:
+            # Extract current pixel colors (ignoring alpha for the check)
+            r, g, b, a = pixels[x, y]
+            
+            # Check if it's the anchor dot
+            if (r, g, b) == CYAN:
                 anchors.append((x, y))
+            
+            # Check if it's the background color, and replace it instantly
+            elif (r, g, b) == TARGET_BG:
+                pixels[x, y] = NEON_MAGENTA
+                replaced_count += 1
 
     print(f"Found {len(anchors)} cyan anchor pixels.")
+    print(f"Replaced {replaced_count} background pixels with Neon Magenta.")
+    
     if len(anchors) == 0:
         print("Error: Could not find any (0, 255, 255) pixels.")
         return
@@ -44,14 +59,10 @@ def convert_to_vertical_strip(input_file, output_file, read_right_to_left=False)
         # Create a blank frame
         frame = Image.new("RGBA", (SPRITE_W, SPRITE_H), (0, 0, 0, 0))
         
-        # --- THE FIX ---
-        # Instead of putting anchor_y at 155, we put anchor_y at 156.
-        # This makes row (anchor_y - 1) land on 155.
         paste_x = ANCHOR_X - anchor_x
         paste_y = (FEET_Y + 1) - anchor_y # Shifted up by 1
         
-        # Paste the original image
-        # PIL will automatically clip anything that falls outside (0, 0, 188, 156)
+        # Paste the modified image
         frame.paste(img, (paste_x, paste_y))
         
         # Calculate vertical position on the strip
@@ -63,4 +74,4 @@ def convert_to_vertical_strip(input_file, output_file, read_right_to_left=False)
     print(f"Success! Aligned strip saved to '{output_file}'. Guide row was clipped.")
 
 # --- Execution ---
-convert_to_vertical_strip("p1jumph.png", "p1jumpv.png", read_right_to_left=True)
+convert_to_vertical_strip("test.png", "testv.png", read_right_to_left=False)
