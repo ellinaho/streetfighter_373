@@ -18,7 +18,7 @@ module vga_top(
     parameter GROUND_LEVEL = FLOOR_Y - SPRITE_H;
 
 //p1 and p2 and game registers
-    reg [9:0] p1_x = 10'd0; //sprite top left coordinate
+    reg [9:0] p1_x = 10'd1009; //sprite top left coordinate
     reg [9:0] p1_y = GROUND_LEVEL; 
     reg [3:0] p1_state = IDLE; 
     reg [3:0] p1_frame = 0;
@@ -26,7 +26,7 @@ module vga_top(
     reg [4:0] p1_charge = 15;
     reg [5:0] p1_hp = 20;
 
-    reg [9:0] p2_x = 10'd96; //sprite top left coordinate
+    reg [9:0] p2_x = 10'd110; //sprite top left coordinate
     reg [9:0] p2_y = GROUND_LEVEL; 
     reg [3:0] p2_state = IDLE; 
     reg [3:0] p2_frame = 0;
