@@ -22,21 +22,23 @@ module vga_top(
     reg [9:0] p1_y = GROUND_LEVEL; 
     reg [3:0] p1_state = IDLE; 
     reg [3:0] p1_frame = 0;
-	 reg p1_charging = 0;
-	 reg [4:0] p1_charge;
+	 reg p1_charging = 1;
+	 reg [4:0] p1_charge = 15;
+	 reg [5:0] p1_hp = 20;
 	 
 
     reg [9:0] p2_x = 10'd65; //sprite top left coordinate
     reg [9:0] p2_y = GROUND_LEVEL; 
-    reg [3:0] p2_state = WIN; 
+    reg [3:0] p2_state = LOSE; 
     reg [3:0] p2_frame = 0;
 	 reg p2_charging = 0;
-	 reg [4:0] p2_charge;
+	 reg [4:0] p2_charge = 15;
+	 reg [5:0] p2_hp = 20;
 
     reg [1:0] game_state = 1; 
-    reg p1_dir = 0; //0 is facing right?
-    reg p2_dir = 1;  
-	 reg [6:0] time_left = 96;
+    reg p1_dir = 1; //0 is facing right?
+    reg p2_dir = 0;  
+	 reg [6:0] time_left = 14;
 
 //Animations, dealing with frames
     parameter IDLE_FRAMES = 4;
@@ -48,7 +50,7 @@ module vga_top(
     parameter GOT_HIT_FRAMES = 2;
     parameter LOSE_FRAMES = 6, LOSE_SPEED = 2; 
     parameter WIN_FRAMES = 3;
-    reg [3:0] anim_timer1 = 4'd0, anim_timer2 = 4'd0;
+    reg [5:0] anim_timer1 = 5'd0, anim_timer2 = 5'd0;
 	reg p1_half_done = 0, p2_half_done = 0; 
     parameter RIGHT = 0, LEFT = 1;
 
@@ -200,24 +202,27 @@ module vga_top(
             end
             LOSE: begin
                 //update coordinates 
-                if (p1_dir == RIGHT) begin p1_x <= p1_x - LOSE_SPEED; end
-                else begin p1_x <= p1_x + LOSE_SPEED; end
+                if (p1_dir == RIGHT && p1_frame != LOSE_FRAMES - 1) begin p1_x <= p1_x - LOSE_SPEED; end
+                else if (p1_dir == LEFT && p1_frame != LOSE_FRAMES - 1) begin p1_x <= p1_x + LOSE_SPEED; end
+	
 
                 anim_timer1 <= anim_timer1 + 1;
 
                 if (anim_timer1 >= (50/LOSE_FRAMES - 1)) begin 
                     anim_timer1 <= 0;
                     if (p1_frame >= (LOSE_FRAMES - 1)) begin
-                        p1_frame <= LOSE_FRAMES - 1;
+                        //p1_frame <= LOSE_FRAMES - 1;
+								p1_x <= 10'd10;
+								p1_frame <= 0;
                     end else 
                         p1_frame <= p1_frame + 1;
                 end
             end
             WIN: begin
                 anim_timer1 <= anim_timer1 + 1;
-                if (anim_timer1 >= ((p1_frame == 0) ? 5'd15 : 5'd7)) begin
+                if (anim_timer1 >= (180/WIN_FRAMES - 1)) begin
                     anim_timer1 <= 0;
-                    if (p1_frame >= (IDLE_FRAMES - 1)) 
+                    if (p1_frame >= (WIN_FRAMES - 1)) 
                         p1_frame <= 1;
                     else 
                         p1_frame <= p1_frame + 1'b1;
@@ -368,8 +373,8 @@ module vga_top(
             end
             LOSE: begin
                 //update coordinates 
-                if (p2_dir == RIGHT) begin p2_x <= p2_x - LOSE_SPEED; end
-                else begin p2_x <= p2_x + LOSE_SPEED; end
+                if (p2_dir == RIGHT && p2_frame != LOSE_FRAMES - 1) begin p2_x <= p2_x - LOSE_SPEED; end
+                else if (p2_dir == LEFT && p2_frame != LOSE_FRAMES - 1) begin p2_x <= p2_x + LOSE_SPEED; end
 
                 anim_timer2 <= anim_timer2 + 1;
 
@@ -377,15 +382,16 @@ module vga_top(
                     anim_timer2 <= 0;
                     if (p2_frame >= (LOSE_FRAMES - 1)) begin
                         p2_frame <= LOSE_FRAMES - 1;
+								p2_x <= 10'd65;
                     end else 
                         p2_frame <= p2_frame + 1;
                 end
             end
             WIN: begin
                 anim_timer2 <= anim_timer2 + 1;
-                if (anim_timer2 >= ((p2_frame == 0) ? 5'd15 : 5'd7)) begin
+                if (anim_timer2 >= (180/WIN_FRAMES - 1)) begin
                     anim_timer2 <= 0;
-                    if (p2_frame >= (IDLE_FRAMES - 1)) 
+                    if (p2_frame >= (WIN_FRAMES - 1)) 
                         p2_frame <= 1;
                     else 
                         p2_frame <= p2_frame + 1'b1;
@@ -437,6 +443,8 @@ end
         .p2_dir     (p2_dir),
 		  
 		  .time_left  (time_left),
+		  
+		  .game_state (game_state),
         
         .VGA_HS     (VGA_HS),
         .VGA_VS     (VGA_VS),
