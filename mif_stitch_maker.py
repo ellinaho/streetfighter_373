@@ -1,4 +1,5 @@
 import sys
+import colorsys
 from PIL import Image
 
 # =================================================================
@@ -13,19 +14,31 @@ FRAME_SEQUENCE = [
     "instr.png"
 ]  
 
-OUTPUT_MIF  = "p1_punch_anim.mif"
+OUTPUT_MIF  = "element.mif"
+
+# The 8-bit hex code your Verilog ignores (E3 is pure RGB332 Magenta)
 CHROMA_KEY_HEX = "E3"
+
+# --- THE HSV HALO SETTINGS (YOUR EXACT SETTINGS) ---
+HUE_MIN = 0.72 
+HUE_MAX = 0.95 
+MIN_SATURATION = 0.15 
+MIN_BRIGHTNESS = 0.15 
 # =================================================================
 
 def rgb_to_rgb332(r, g, b):
-    # Standard integer division (The Floor Fix)
-    r_3bit = (r * 7) // 255
-    g_3bit = (g * 7) // 255
-    b_2bit = (b * 3) // 255
+    # YOUR EXACT MATH AND SHADOW FIX
+    r_3bit = round((r * 7) / 255)
+    g_3bit = round((g * 7) / 255)
+    b_2bit = round((b * 3) / 255)
+    
+    if b < 80:
+        b_2bit = 0
+    
     return f"{(r_3bit << 5) | (g_3bit << 2) | b_2bit:02X}"
 
 def generate_dynamic_mif():
-    print(f"--- MIF GENERATOR (VARIABLE SIZE STITCHER + WHITE PIXEL FIX) ---")
+    print(f"--- MIF GENERATOR (YOUR HSV LOGIC + VARIABLE SIZE STITCHER) ---")
     
     all_hex_pixels = []
     frame_data = [] # Stores (start_address, width, height)
@@ -54,14 +67,15 @@ def generate_dynamic_mif():
             for x in range(width):
                 r, g, b, a = img.getpixel((x, y))
                 
-                is_transparent = (a < 128)
-                is_magenta_halo = (r > 100) and (b > 100) and (g < 90)
-                
-                # THE WHITE PIXEL SAVIOR
-                # Now checks for low green so it doesn't accidentally eat white (255, 255, 255)!
-                is_pure_magenta = (r > 240) and (b > 240) and (g < 50)
+                # --- YOUR EXACT PIXEL FILTERING LOGIC ---
+                h, s, v = colorsys.rgb_to_hsv(r/255.0, g/255.0, b/255.0)
 
-                if is_transparent or is_magenta_halo or is_pure_magenta:
+                is_transparent_png = (a < 128)
+                is_magenta_hue = (HUE_MIN < h < HUE_MAX)
+                is_colorful = (s > MIN_SATURATION)
+                is_bright = (v > MIN_BRIGHTNESS)
+
+                if is_transparent_png or (is_magenta_hue and is_colorful and is_bright):
                     all_hex_pixels.append(CHROMA_KEY_HEX)
                     removed_count += 1
                 else:
@@ -84,15 +98,16 @@ def generate_dynamic_mif():
         f.write("END;\n")
         
     print(f"\nSuccess! Stitched into {OUTPUT_MIF} ({total_pixels} pixels).")
+    print(f"Purged {removed_count} magenta/purple pixels using your custom HSV filter.")
     
     # Generate the Verilog LUT
     print("\n" + "="*50)
-    print("COPY THIS LOOKUP TABLE INTO YOUR VERILOG (vga_pixel.v)")
+    print("COPY THIS LOOKUP TABLE INTO YOUR VERILOG")
     print("="*50)
     print("reg [16:0] frame_offset;")
     print("reg [9:0] current_w, current_h;")
     print("always @(*) begin")
-    print("    case(p1_frame)")
+    print("    case(p2_frame) // Change to p1_frame if needed")
     for data in frame_data:
         print(f"        {data['frame']}: begin frame_offset = {data['offset']}; current_w = {data['width']}; current_h = {data['height']}; end")
     print("        default: begin frame_offset = 0; current_w = 64; current_h = 53; end")
