@@ -18,13 +18,14 @@ CHROMA_KEY_HEX = "E3"
 # =================================================================
 
 def rgb_to_rgb332(r, g, b):
+    # Standard integer division (The Floor Fix)
     r_3bit = (r * 7) // 255
     g_3bit = (g * 7) // 255
     b_2bit = (b * 3) // 255
     return f"{(r_3bit << 5) | (g_3bit << 2) | b_2bit:02X}"
 
 def generate_dynamic_mif():
-    print(f"--- MIF GENERATOR (VARIABLE SIZE STITCHER) ---")
+    print(f"--- MIF GENERATOR (VARIABLE SIZE STITCHER + WHITE PIXEL FIX) ---")
     
     all_hex_pixels = []
     frame_data = [] # Stores (start_address, width, height)
@@ -55,7 +56,10 @@ def generate_dynamic_mif():
                 
                 is_transparent = (a < 128)
                 is_magenta_halo = (r > 100) and (b > 100) and (g < 90)
-                is_pure_magenta = (r > 240) and (b > 240)
+                
+                # THE WHITE PIXEL SAVIOR
+                # Now checks for low green so it doesn't accidentally eat white (255, 255, 255)!
+                is_pure_magenta = (r > 240) and (b > 240) and (g < 50)
 
                 if is_transparent or is_magenta_halo or is_pure_magenta:
                     all_hex_pixels.append(CHROMA_KEY_HEX)
