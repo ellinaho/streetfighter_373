@@ -5,8 +5,8 @@ from PIL import Image
 # =================================================================
 # CONFIGURATION
 # =================================================================
-INPUT_IMAGE = "p1IWPJ.png"  
-OUTPUT_MIF  = "p1_rom.mif"
+INPUT_IMAGE = "title.png"  
+OUTPUT_MIF  = "title.mif"
 
 # The 8-bit hex code your Verilog ignores (E3 is pure RGB332 Magenta)
 CHROMA_KEY_HEX = "E3"
@@ -28,6 +28,14 @@ def rgb_to_rgb332(r, g, b):
     r_3bit = round((r * 7) / 255)
     g_3bit = round((g * 7) / 255)
     b_2bit = round((b * 3) / 255)
+    
+    # --- ADDED CODE START ---
+    # Intercept the rounding error. If the original blue was just a dark shadow, 
+    # force the 2-bit blue channel to 0 so it doesn't create neon dots.
+    if b < 80:
+        b_2bit = 0
+    # --- ADDED CODE END ---
+    
     return f"{(r_3bit << 5) | (g_3bit << 2) | b_2bit:02X}"
 
 def generate_mif():

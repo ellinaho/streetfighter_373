@@ -16,7 +16,7 @@ module pixel(
     input [9:0] p1_y, 
     input [3:0] p1_state,  
     input [3:0] p1_frame,   
-    input [7:0] p1_hp, //change bit size
+    input [5:0] p1_hp, //change bit size
     input p1_charging,
     input [4:0] p1_charge, //change bit size
     input p1_dir,
@@ -25,14 +25,14 @@ module pixel(
     input [9:0] p2_y, 
     input [3:0] p2_state,  
     input [3:0] p2_frame,   
-    input [7:0] p2_hp,
+    input [5:0] p2_hp,
     input p2_charging,
     input [4:0] p2_charge, //change bit size
     input p2_dir,
 
     //game info
-    input [1:0] game_state;
-    input [6:0] time_left;
+    input [1:0] game_state,
+    input [6:0] time_left,
 
     //vga stuff
     output VGA_HS, 
@@ -50,20 +50,19 @@ module pixel(
     always @(posedge CLOCK_50) clock_25 <= ~clock_25;
     assign VGA_CLK = clock_25;
 
-    reg [9:0] logic_h = 0;
-    reg [9:0] logic_v = 0;
-
+    reg [9:0] h_count = 0;
+    reg [9:0] v_count = 0;
     always @(posedge clock_25) begin
-        if (logic_h == 799) begin
-            logic_h <= 0;
-            if (logic_v == 524) logic_v <= 0;
-            else logic_v <= logic_v + 1;
-        end else logic_h <= logic_h + 1;
+        if (h_count == 799) begin
+            h_count <= 0;
+            if (v_count == 524) v_count <= 0;
+            else v_count <= v_count + 1;
+        end else h_count <= h_count + 1;
     end
 
-    assign VGA_HS = (logic_h >= 656 && logic_h < 752) ? 1'b0 : 1'b1;
-    assign VGA_VS = (logic_v >= 490 && logic_v < 492) ? 1'b0 : 1'b1;
-    assign VGA_BLANK_N = (logic_h < 640 && logic_v < 480) ? 1'b1 : 1'b0;
+    assign VGA_HS = (h_count >= 656 && h_count < 752) ? 1'b0 : 1'b1;
+    assign VGA_VS = (v_count >= 490 && v_count < 492) ? 1'b0 : 1'b1;
+    assign VGA_BLANK_N = (h_count < 640 && v_count < 480) ? 1'b1 : 1'b0;
     assign VGA_SYNC_N = 1'b1;
 
 
@@ -78,14 +77,13 @@ module pixel(
         input [9:0] box_w; // Box width
         input [8:0] box_h; // Box height
         begin
-            in_box = (px >= box_x && px < (box_x + box_w) && 
-                    py >= box_y && py < (box_y + box_h));
+            in_box = ((px - box_x) < box_w) && ((py - box_y) < box_h);
         end
     endfunction
     
 // ADDRESS MATH (assuming face right)
-    wire [7:0] logic_h = logic_h[9:2]; // Bits [9,8,7,6,5,4,3,2] -> Max value 159
-    wire [6:0] logic_v = logic_v[9:2]; // Bits [9,8,7,6,5,4,3,2] -> Max value 119
+    wire [7:0] logic_h = h_count[9:2]; // Bits [9,8,7,6,5,4,3,2] -> Max value 159
+    wire [6:0] logic_v = v_count[9:2]; // Bits [9,8,7,6,5,4,3,2] -> Max value 119
 
 //player sprite boxes
     parameter SPRITE_H = 53, SPRITE_W = 64;
@@ -94,7 +92,7 @@ module pixel(
 
 //HP bar boxes
 
-    parameter P1_HP_X_START = 21, P2_HP_X_END = 138, HP_Y = 6;
+    parameter P1_HP_X_START = 21, P2_HP_X_END = 138, HP_Y = 8;
     parameter HP_W = 50, HP_H = 3;
 
     wire p1_hp_fill = in_box(logic_h, logic_v, P1_HP_X_START, HP_Y, p1_hp, HP_H);  
@@ -102,22 +100,22 @@ module pixel(
     wire p1_hp_inner = in_box(logic_h, logic_v, P1_HP_X_START, HP_Y, HP_W, HP_H); 
     wire p2_hp_inner = in_box(logic_h, logic_v, (P2_HP_X_END - HP_W), HP_Y, HP_W, HP_H);
     wire p1_hp_outer = in_box(logic_h, logic_v, P1_HP_X_START-1, HP_Y-1, HP_W+2, HP_H+2); 
-    wire p2_hp_outter = in_box(logic_h, logic_v, (P2_HP_X_END - HP_W)-1, HP_Y-1, HP_W+2, HP_H+2);
-    wire p1_hp_border = p1_hp_outter && ~p1_hp_inner;
-    wire p2_hp_border = p2_hp_outter && ~p2_hp_inner;
+    wire p2_hp_outer = in_box(logic_h, logic_v, (P2_HP_X_END - HP_W)-1, HP_Y-1, HP_W+2, HP_H+2);
+    wire p1_hp_border = p1_hp_outer && ~p1_hp_inner;
+    wire p2_hp_border = p2_hp_outer && ~p2_hp_inner;
 
 //charging bar boxes
-    parameter MUSCLE_X = 16, MUSCLE_Y = 4, MUSCLE_W = 32, MUSCLE_H = 3; //muscle y from top of sprite
+    parameter MUSCLE_X = 19, MUSCLE_Y = 4, MUSCLE_W = 25, MUSCLE_H = 3; //muscle y from top of sprite
     
-    wire p1_muscle_fill = in_box(logic_h, logic_v, p1_x + MUSCLE_X, p1_y - MUSCLE_Y, p1_charge, MUSCLE_H);  
-    wire p1_muscle_inner = in_box(logic_h, logic_v, p1_x + MUSCLE_X, p1_y - MUSCLE_Y, MUSCLE_W, MUSCLE_H); 
-    wire p1_muscle_outer = in_box(logic_h, logic_v, p1_x + MUSCLE_X - 1, p1_y - MUSCLE_Y - 1, MUSCLE_W + 2, MUSCLE_H + 2); 
-    wire p1_muscle_border = p1_muscle_outter && ~p1_muscle_inner;
+    wire p1_muscle_fill = in_box(logic_h, logic_v, p1_x + MUSCLE_X, p1_y + MUSCLE_Y, p1_charge, MUSCLE_H);  
+    wire p1_muscle_inner = in_box(logic_h, logic_v, p1_x + MUSCLE_X, p1_y + MUSCLE_Y, MUSCLE_W, MUSCLE_H); 
+    wire p1_muscle_outer = in_box(logic_h, logic_v, p1_x + MUSCLE_X - 1, p1_y + MUSCLE_Y - 1, MUSCLE_W + 2, MUSCLE_H + 2); 
+    wire p1_muscle_border = p1_muscle_outer && ~p1_muscle_inner;
 
-    wire p2_muscle_fill = in_box(logic_h, logic_v, p2_x + MUSCLE_X, p2_y - MUSCLE_Y, p2_charge, MUSCLE_H);  
-    wire p2_muscle_inner = in_box(logic_h, logic_v, p2_x + MUSCLE_X, p2_y - MUSCLE_Y, MUSCLE_W, MUSCLE_H); 
-    wire p2_muscle_outer = in_box(logic_h, logic_v, p2_x + MUSCLE_X - 1, p2_y - MUSCLE_Y - 1, MUSCLE_W + 2, MUSCLE_H + 2); 
-    wire p2_muscle_border = p2_muscle_outter && ~p2_muscle_inner;
+    wire p2_muscle_fill = in_box(logic_h, logic_v, p2_x + MUSCLE_X, p2_y + MUSCLE_Y, p2_charge, MUSCLE_H);  
+    wire p2_muscle_inner = in_box(logic_h, logic_v, p2_x + MUSCLE_X, p2_y + MUSCLE_Y, MUSCLE_W, MUSCLE_H); 
+    wire p2_muscle_outer = in_box(logic_h, logic_v, p2_x + MUSCLE_X - 1, p2_y + MUSCLE_Y - 1, MUSCLE_W + 2, MUSCLE_H + 2); 
+    wire p2_muscle_border = p2_muscle_outer && ~p2_muscle_inner;
 
 //bg, time, title, ko, pfps boxes
     //background
@@ -125,23 +123,28 @@ module pixel(
     wire bg_box = in_box(logic_h, logic_v, 0, 0, GAME_W, GAME_H);
 
     //titles
-    wire title_box = in_box(); //change todo
+    parameter TITLE_X = 11, TITLE_Y = 46, TITLE_W = 142, TITLE_H = 28;
+    wire title_box = in_box(logic_h, logic_v, TITLE_X, TITLE_Y, TITLE_W, TITLE_H); 
     
+    //instr
+    parameter INSTR_X = 48, INSTR_Y = 89, INSTR_W = 64, INSTR_H = 13;
+    wire instr_box = in_box(logic_h, logic_v, INSTR_X, INSTR_Y, INSTR_W, INSTR_H);
+
     //pfps
-    parameter PFP_Y = 5, PFP_X1 = 5, PFP_X2 = 141, PFP_W = 14, PFP_H = 17;
+    parameter PFP_Y = 7, PFP_X1 = 5, PFP_X2 = 141, PFP_W = 14, PFP_H = 17;
     wire p1_pfp_box = in_box(logic_h, logic_v, PFP_X1, PFP_Y, PFP_W, PFP_H); 
     wire p2_pfp_box = in_box(logic_h, logic_v, PFP_X2, PFP_Y, PFP_W, PFP_H); 
 
     //KO box
-    parameter KO_X = 38, KO_Y = 42, KO_W = 80, KO_H = 53;
+    parameter KO_X = 38, KO_Y = 42, KO_W = 79, KO_H = 53;
     wire ko_box = in_box(logic_h, logic_v, KO_X, KO_Y, KO_W, KO_H);
 
     //time...
-    parameter TIME_X = 72, TIME_Y = 6, TIME_W = 16, TIME_H = 3; 
+    parameter TIME_X = 72, TIME_Y = 8, TIME_W = 16, TIME_H = 3; 
     wire time_fill = in_box(logic_h, logic_v, TIME_X, TIME_Y, time_left, TIME_H);  
     wire time_inner = in_box(logic_h, logic_v, TIME_X, TIME_Y, TIME_W, TIME_H);   
     wire time_outer = in_box(logic_h, logic_v, TIME_X, TIME_Y-1, TIME_W, TIME_H+2);   
-    wire time_border = time_outter && ~time_inner;
+    wire time_border = time_outer && ~time_inner;
 
 //Choosing animation base addr
     parameter IDLE = 0, WALK = 1, PUNCH = 2, JUMP = 3; 
@@ -159,7 +162,7 @@ module pixel(
             JUMP_PUNCH: p1_base = 50880;
             GOT_HIT: p1_base = 67840;
             LOSE: p1_base = 74624;
-            WIN: p1_base = 94976
+            WIN: p1_base = 94976;
             default: p1_base = 0;
         endcase
         case (p2_state)
@@ -197,10 +200,11 @@ module pixel(
         if (p2_box) p2_rom_addr = p2_base + (p2_frame * PIXELS_PER_FRAME) + (p2_local_y * SPRITE_W) + p2_read_x;
         else p2_rom_addr = 0;
 
-        if (p1_pfp_box) elem_rom_addr = (logic_v - 5) * 14 + (logic_h - 5);
-        else if (p2_pfp_box) elem_rom_addr = 14 * 17 + (logic_v - 5) * 14 + (logic_h - 141);
-        else if (title_box) elem_rom_addr = ?
-        else if (ko_box) elem_rom_addr = ?
+        if (p1_pfp_box && (game_state == GAME || game_state == KO)) elem_rom_addr = (logic_v - PFP_Y) * PFP_W + (logic_h - PFP_X1);
+        else if (p2_pfp_box && (game_state == GAME || game_state == KO)) elem_rom_addr = 238 + (logic_v - PFP_Y) * PFP_W + (logic_h - PFP_X2);
+        else if (title_box && game_state == START ) elem_rom_addr = 476 + (logic_v - TITLE_Y) * TITLE_W + (logic_h - TITLE_X);
+        else if (ko_box && game_state == KO) elem_rom_addr = 4452 + (logic_v - KO_Y) * KO_W + (logic_h - KO_X);
+        else if (instr_box && game_state == START) elem_rom_addr = 8639 + (logic_v - INSTR_Y) * INSTR_W + (logic_h - INSTR_X);
         else elem_rom_addr = 0;
 
     end
@@ -217,7 +221,7 @@ module pixel(
 
             if (game_state == START) begin
                 //streetfighter 373, flex to start game
-                if (title_box && elem_rom_data != TRANSPARENT) begin final_color_8bit = elem_rom_data; end
+                if ((title_box || instr_box) && elem_rom_data != TRANSPARENT) begin final_color_8bit = elem_rom_data; end
             end
             if (game_state == START || game_state == GAME) begin
                 //muscle chargeup
@@ -233,7 +237,7 @@ module pixel(
                 //pfps
                 if ((p1_pfp_box || p2_pfp_box) && elem_rom_data != TRANSPARENT) begin final_color_8bit = elem_rom_data; end
                 //time
-                if (time_fill) begin final_color_8bit = 8'hA8; end 
+                if (time_fill) begin final_color_8bit = 8'hD8; end 
                 if (time_border) begin final_color_8bit = 8'hFF; end //white
             end
             if (game_state == KO) begin 
@@ -251,7 +255,7 @@ module pixel(
             8'hA2: begin VGA_R = 10'd255;  VGA_G = 10'd209;  VGA_B = 10'd40;   end //yellow for hp
             8'hFF: begin VGA_R = 10'd255;  VGA_G = 10'd255;  VGA_B = 10'd255;  end //white
             8'h75: begin VGA_R = 10'd6;    VGA_G = 10'd204;  VGA_B = 10'd0;    end //green 
-            8'hA8: begin VGA_R = 10'd40;    VGA_G = 10'd177;  VGA_B = 10'd255; end //blue
+            8'hD8: begin VGA_R = 10'd100;    VGA_G = 10'd237;  VGA_B = 10'd255; end //neon blue
             
             default: begin 
                 VGA_R = {final_color_8bit[7:5], 5'b0};
