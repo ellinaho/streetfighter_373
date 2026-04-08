@@ -39,7 +39,9 @@ module vga_top(
     reg p2_dir = 1;  
 	reg [6:0] time_left = 14;
 
-//Animations, dealing with frames
+
+//strictly animations
+    //Animations, dealing with frames
     parameter IDLE_FRAMES = 4;
     parameter WALK_FRAMES = 5, WALK_SPEED = 1; 
     parameter PUNCH_FRAMES = 2;
@@ -56,6 +58,7 @@ module vga_top(
     parameter IDLE = 0, WALK = 1, PUNCH = 2, JUMP = 3; 
     parameter JUMP_PUNCH = 4, GOT_HIT = 5, LOSE = 6, WIN = 7;
 
+    //animations, modifies frame + xy coordinates of player sprite
     always @(negedge VGA_VS) begin
         case(p1_state)
             IDLE: begin
@@ -392,21 +395,20 @@ module vga_top(
                 end
             end
         endcase
+    end
 
-end
-
-//ROM WIRES declaration
+    //ROM WIRES declaration
     wire [16:0] p1_rom_addr, p2_rom_addr; //change bits
     wire [14:0] bg_rom_addr, elem_rom_addr;
     wire [7:0] bg_rom_data, p1_rom_data, p2_rom_data, elem_rom_data;
 
-//HARDWARE ROM declaration
+    //HARDWARE ROM declaration
     p1_rom player1_memory (.address(p1_rom_addr), .clock(CLOCK_50), .q(p1_rom_data));
     p2_rom player2_memory (.address(p2_rom_addr), .clock(CLOCK_50), .q(p2_rom_data));
     bg_rom background_memory (.address(bg_rom_addr), .clock(CLOCK_50), .q(bg_rom_data));
     elem_rom element_memory (.address(elem_rom_addr), .clock(CLOCK_50), .q(elem_rom_data));
 
-//call graphics, TODO: ensure inputs are all right
+    //call graphics, TODO: ensure inputs are all right
     pixel my_pixel (
         .CLOCK_50   (CLOCK_50),
         .bg_rom_addr(bg_rom_addr),
@@ -436,9 +438,9 @@ end
         .p2_charging(p2_charging),
         .p2_dir     (p2_dir),
 		  
-		  .time_left  (time_left),
+		.time_left  (time_left),
 		  
-		  .game_state (game_state),
+		.game_state (game_state),
         
         .VGA_HS     (VGA_HS),
         .VGA_VS     (VGA_VS),
