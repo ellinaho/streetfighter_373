@@ -53,7 +53,7 @@ module vga_top(
     parameter WIN_FRAMES = 3;
     reg [5:0] anim_timer1 = 5'd0, anim_timer2 = 5'd0;
 	reg p1_half_done = 0, p2_half_done = 0; 
-    parameter RIGHT = 0, LEFT = 1;
+    parameter RIGHT = 1, LEFT = 0;
 
     parameter IDLE = 0, WALK = 1, PUNCH = 2, JUMP = 3; 
     parameter JUMP_PUNCH = 4, GOT_HIT = 5, LOSE = 6, WIN = 7;

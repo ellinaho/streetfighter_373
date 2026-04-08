@@ -11,7 +11,7 @@ module game_engine(
     // To the rest of the System
     output reg [2:0]  game_state_out, // 00: STARTUP, 01: PLAY, 10: GAMEOVER
     output reg        round_reset,     // Pulses high to reset Player modules
-    output wire [6:0] time_remaining,
+    output wire [6:0] time_left,
     output wire match_over,
     output wire p1_winner,
     output wire p2_winner
@@ -40,7 +40,7 @@ module game_engine(
     end
 
     reg [6:0] round_timer; // 7 bits can hold up to 127
-    assign time_remaining = round_timer;
+    assign time_left = round_timer;
     always @(posedge clk) begin
         if (rst || current_state == STARTUP) begin
             round_timer <= 7'd96; // Reset time to 99
