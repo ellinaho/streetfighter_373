@@ -17,9 +17,6 @@ module game_engine(
     output wire p2_winner
 );
 
-    assign match_over = (current_state == GAMEOVER);
-    assign p1_winner = match_over && ((p2_hp == 0) || (p1_hp > p2_hp));
-    assign p2_winner = match_over && ((p1_hp == 0) || (p2_hp > p1_hp));
 
      // State definitions and transitions
     localparam STARTUP = 3'd0, PLAY = 3'd1, GAMEOVER = 3'd2;
@@ -88,4 +85,9 @@ module game_engine(
         round_reset = (current_state == STARTUP);
     end
 
+	 assign match_over = (current_state == GAMEOVER);
+    assign p1_winner = match_over && ((p2_hp == 0) || (p1_hp > p2_hp));
+    assign p2_winner = match_over && ((p1_hp == 0) || (p2_hp > p1_hp));
+	 
 endmodule
+
