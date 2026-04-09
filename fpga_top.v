@@ -12,13 +12,13 @@ module fpga_top(
     output VGA_CLK,
     output [7:0] VGA_R,
     output [7:0] VGA_G,
-    output [7:0] VGA_B
+    output [7:0] VGA_B,
 
     //SPI
     input  wire        SPI_SCLK, // Clock from the microcontroller
     input  wire        SPI_CS,   // Chip select from the microcontroller
     input  wire        SPI_MOSI, // Data IN from the microcontroller
-    output wire        SPI_MISO,  // Data OUT to the microcontroller (if needed)
+    output wire        SPI_MISO  // Data OUT to the microcontroller (if needed)
     
 );
 
@@ -26,8 +26,8 @@ module fpga_top(
     wire p1_start_button;
     wire p2_start_button;
 
-    assign p1_start_button = 1'b1;
-    assign p2_start_button = 1'b1;
+    assign p1_start_button = SW[15];
+    assign p2_start_button = SW[14];
     assign rematch_button_wire = 1'b0;
 
 //game logic random stuff
@@ -69,7 +69,7 @@ module fpga_top(
     wire  [5:0] p2_hp;
     wire p2_dir;  
 
-    reg [1:0] game_state = 0;
+    wire [1:0] game_state;
     wire [6:0] time_left;
 
 // registers 
@@ -501,18 +501,18 @@ module fpga_top(
 
     // Testing logic FPGA connection / not needed in actual game
     assign p1_punch_cmd    =   ~KEY[1];
-	assign p1_h_move	=   ~KEY[2] && SW[17:16];
+	assign p1_h_move	=   SW[17:16];
     assign p1_jump_cmd    =   ~KEY[3];
     assign p1_punch_val =   SW[3:0];
-    assign p1_charging = 1'b0;
-    assign p1_charge = 6'b0;
+    assign p1_charging = 1'b1 && SW[13];
+    assign p1_charge = 5'd25;
 
     assign p2_punch_cmd = 1'b0;
     assign p2_h_move = 2'b00; // P2 stands still
     assign p2_jump_cmd = 1'b0;
     assign p2_punch_val = 0;
-    assign p2_charging = 1'b0;
-    assign p2_charge = 6'b0;
+    assign p2_charging = 1'b1 && SW[12];
+    assign p2_charge = 5'd25;
 
     game_engine game(
         .clk(CLOCK_50), 
@@ -530,7 +530,7 @@ module fpga_top(
         .time_left(time_left)
    );
 
-    player_controller #(.START_X(p1_start_x), .START_FACING(1)) p1(
+    player_controller #(.START_FACING(1)) p1(
         .clk(CLOCK_50), 
         .reset(start_new_round_wire), 
         .h_move_cmd(p1_h_move),
@@ -560,7 +560,7 @@ module fpga_top(
         .i_won(p1_winner)
    );
 
-    player_controller #(.START_X(p2_start_x), .START_FACING(0)) p2(
+    player_controller #(.START_FACING(0)) p2(
         .clk(CLOCK_50), 
         .reset(start_new_round_wire), 
         .h_move_cmd(p2_h_move),

@@ -180,7 +180,7 @@ module pixel(
 
 // ROM Address Assignment
     parameter PIXELS_PER_FRAME = SPRITE_W * SPRITE_H;
-    parameter LEFT = 1, RIGHT = 0;
+    parameter LEFT = 0, RIGHT = 1;
     wire [10:0] p1_local_y = logic_v - p1_y; 
     wire [9:0]  p1_local_x = logic_h - p1_x;
     wire [9:0] p1_read_x = (p1_dir == LEFT) ? ((SPRITE_W - 1) - p1_local_x) : p1_local_x;
