@@ -1,189 +1,133 @@
 module game_top(
-    // --- System Essentials ---
-    input  wire        CLOCK_50,
-    input  wire [4:0]  KEY,      // KEY[0] will be our physical reset button
+    input  CLOCK_50,
 
+    //input from vga top 
+    input [9:0] p1_x,
+    input [9:0] p1_y, 
+    input [9:0] p2_x,
+    input [9:0] p2_y, 
 
-    // --- VGA Display Physical Pins ---
-    output wire [7:0]  VGA_R,    // 8-bit Red video signal
-    output wire [7:0]  VGA_G,    // 8-bit Green video signal
-    output wire [7:0]  VGA_B,    // 8-bit Blue video signal
-    output wire        VGA_HS,   // Horizontal sync pulse
-    output wire        VGA_VS,   // Vertical sync pulse
-    output wire        VGA_CLK,  // Video clock (often 25MHz for 640x480)
-    output wire        VGA_BLANK_N,
-    output wire        VGA_SYNC_N,
+    //spi inputs
+    input p1_jump_cmd, p2_jump_cmd,
+    input p1_punch_cmd, p2_punch_cmd,
+    input [3:0] p1_punch_val, p2_punch_val,
+    input p1_charge_cmd, p2_charge_cmd,
+    //input p1_charge, p2_charge,
+    input [1:0] p1_move_cmd, p2_move_cmd,
 
+    //driven by player controller
+    output [3:0] p1_state,
+    output p1_charging,
+    output [4:0] p1_charge,
+    output [5:0] p1_hp,
+    output p1_dir, //1 is facing right?
 
-    // --- SPI Controller Physical Pins (GPIO) ---
-    input  wire        SPI_SCLK, // Clock from the microcontroller
-    input  wire        SPI_CS,   // Chip select from the microcontroller
-    input  wire        SPI_MOSI, // Data IN from the microcontroller
-    output wire        SPI_MISO,  // Data OUT to the microcontroller (if needed)
+    output [3:0] p2_state,
+    output p2_charging,
+    output [4:0] p2_charge,
+    output  [5:0] p2_hp,
+    output p2_dir,
 
+    //driven by game engine
+    output [1:0] game_state,
+    output [6:0] time_left,
 
-    //Testing with LEDs
-    output wire [17:0] LEDR,
-    output wire [8:0]  LEDG,
-    output wire [6:0]  HEX7, HEX6, HEX5, HEX4, HEX3, HEX2, HEX1, HEX0,
+    //testing? maybe keep
+    input p1_start_button,
+    input p2_start_button
+);
 
-
-    input  wire [17:0] SW
-    );
-
-
-    wire p1_start_button;
-    wire p2_start_button;
-
-
-    wire rematch_button_wire; // Comes from SPI, goes to Engine
-    wire start_new_round_wire; // Comes from Engine, goes to Players
-
-    wire [6:0] p1_hp;
-    wire [6:0] p2_hp;
-
-
-    wire [1:0] game_state;
-
-    //controller
-    wire p1_jump_cmd, p1_punch_cmd, p1_charging, p1_take_hit, p1_dir;
-    wire [1:0] p1_h_move;
-    wire [3:0] p1_punch_val;
-    wire [6:0] p1_incoming_damage_val, p1_outgoing_damage_val;
-
-    wire [5:0] p1_charge;
-    
-    wire [9:0] p1_x, p1_y;
-
-
-    wire p2_jump_cmd, p2_punch_cmd, p2_charging, p2_take_hit, p2_dir;
-    wire [1:0] p2_h_move;
-    wire [3:0] p2_H_speed, p2_punch_val;
-    wire [6:0] p2_incoming_damage_val, p2_outgoing_damage_val;
-    wire [5:0] p2_charge;
-    wire [9:0] p2_x, p2_y;
-
-
-    assign p1_incoming_damage_val = p2_outgoing_damage_val;
-    assign p2_incoming_damage_val = p1_outgoing_damage_val;
-
+    //driven by collision unit
     wire p1_hit_p2, p2_hit_p1;
-    wire p1_dead, p2_dead;
-    wire [2:0] p1_state, p2_state;
 
+    //driven by player controller
+    wire p1_fullcharge, p2_fullcharge;
+    wire [6:0] p1_damage_val_in, p1_damage_val_out;
+    wire [6:0] p2_damage_val_in, p2_damage_val_out;
+    assign p1_damage_val_in = p2_damage_val_out;
+    assign p2_damage_val_in = p1_damage_val_out;
 
-    wire match_over, p1_winner, p2_winner;
-    wire p1_is_move_left, p1_is_move_right, p1_is_jumping;
-    wire p2_is_move_left, p2_is_move_right, p2_is_jumping;
+    //driven by game engine
+    wire [1:0] winner;
 
-    wire [6:0] time_left;
-   // assign p1_take_hit = p2_hit_p1_lower | p2_hit_p1_upper;
-   // assign p2_take_hit = p1_hit_p2_lower | p1_hit_p2_upper;
+    collision_unit collision(
+       .p1_x(p1_x), 
+       .p1_y(p1_y), 
+       .p2_x(p2_x), 
+       .p2_y(p2_y), //from vga
 
+       .p1_state(p1_state), 
+       .p2_state(p2_state),
+       .p1_dir(p1_dir), 
+       .p2_dir(p2_dir),
 
-   // Testing SPI Logic
-   // assign LEDR[1:0]    =   p1_h_move;
-   // assign LEDR[4]      =   p1_jump_cmd;
-   // assign LEDR[5]      =   p1_punch_cmd;
-   // assign LEDR[9:6]    =   p1_punch_val;
-   // assign LEDR[10]     =   p1_charging;
-   // assign LEDR[16:11]  =   p1_charge;
-   // assign LEDG[1:0]    =   p2_h_move;
-
-
-    assign p1_start_button = 1'b1;
-    assign p2_start_button = 1'b1;
-    assign rematch_button_wire = 1'b0;
-   
-    assign p1_punch_cmd    =   ~KEY[1];
-	assign p1_h_move	=   ~KEY[2] && SW[17:16];
-    assign p1_jump_cmd    =   ~KEY[3];
-
-
-   assign p1_punch_val =   SW[3:0];
-   //assign p2_punch_val =   SW[7:4];
-  
-   //assign p1_charging = ~KEY[2];
-   //assign p1_charge = SW[13:8];
-   
-   // assign p1_h_move = 2'b00; // P1 stands still
-   assign p2_h_move = 2'b00; // P2 stands still
-   assign p2_jump_cmd = 1'b0;
-   assign p2_punch_cmd = 1'b0;
-   assign p2_charging = 1'b0;
-   assign p2_charge = 6'd0;
-
-
-   // Player 1 HP Display (HEX7, HEX6, HEX5)
-   hp_display p1_hp_disp (
-       .hp           (p1_hp),       
-       .hex_hundreds (HEX7),
-       .hex_tens     (HEX6),
-       .hex_ones     (HEX5)
-   );
-  
-   // Player 2 HP Display (HEX2, HEX1, HEX0)
-   hp_display p2_hp_disp (
-       .hp           (p2_hp),       
-       .hex_hundreds (HEX2),
-       .hex_tens     (HEX1),
-       .hex_ones     (HEX0)
+       //outputs
+       .p1_hit_p2(p1_hit_p2), 
+       .p2_hit_p1(p2_hit_p1)
    );
 
+    game_engine game(
+        .clk(CLOCK_50), 
+        .rst_button(~KEY[0]), 
+        .p1_ready(p1_start_button || p1_fullcharge),  //testing
+        .p2_ready(p2_start_button || p2_fullcharge),  //testing
+        .p1_hp(p1_hp), 
+        .p2_hp(p2_hp), 
+        .game_state(game_state), 
+        .time_left(time_left),
+        .winner(winner)
+   );
 
-   // Turn off the two unused displays in the middle (Separator)
-   assign HEX4 = 7'b1111111;
-   assign HEX3 = 7'b1111111;
+    player_controller p1(
+        .clk(CLOCK_50), 
+        .game_state(game_state),
+        .winner(winner),
+        .move_cmd(p1_move_cmd),
+        .jump_cmd(p1_jump_cmd), 
+        .punch_cmd(p1_punch_cmd), 
+        .punch_val(p1_punch_val),
+        .charge_cmd(p1_charge_cmd), 
+        .getting_hit(p2_hit_p1),
+        .damage_val_in(p1_damage_val_in),
+        .opponent_x(p2_x), 
+        .pos_x(p1_x), 
+        .pos_y(p1_y),
+
+        //outputs
+        .player_dir(p1_dir), 
+        .hp(p1_hp), 
+        .is_charging(p1_charging),
+        .charge_bar(p1_charge),
+        .full_charge(p1_fullcharge),
+        .damage_val_out(p1_damage_val_out),
+        .player_num(1)
+   );
+
+   player_controller p1(
+        .clk(CLOCK_50), 
+        .game_state(game_state),
+        .winner(winner),
+        .move_cmd(p2_move_cmd),
+        .jump_cmd(p2_jump_cmd), 
+        .punch_cmd(p2_punch_cmd), 
+        .punch_val(p2_punch_val),
+        .charge_cmd(p2_charge_cmd), 
+        .getting_hit(p1_hit_p2),
+        .damage_val_in(p2_damage_val_in),
+        .opponent_x(p1_x), 
+        .pos_x(p2_x), 
+        .pos_y(p2_y),
+
+        //outputs
+        .player_dir(p2_dir), 
+        .hp(p2_hp), 
+        .is_charging(p2_charging),
+        .charge_bar(p2_charge),
+        .full_charge(p2_fullcharge),
+        .damage_val_out(p2_damage_val_out),
+        .player_num(2)
+   );
 
 
-   game_engine game(.clk(CLOCK_50), .rst(~KEY[0]), .p1_ready(p1_start_button), .p2_ready(p2_start_button), .restart_cmd(rematch_button_wire),
-   .p1_hp(p1_hp), .p2_hp(p2_hp), .game_state_out(game_state), .round_reset(start_new_round_wire), .match_over(match_over), .p1_winner(p1_winner), .p2_winner(p2_winner),
-   .time_left(time_left)
-   );
-   player_controller #(.START_X(p1_start_x), .START_FACING(1)) p1(
-       .clk(CLOCK_50), .reset(start_new_round_wire), .h_move_cmd(p1_h_move),
-       .jump_cmd(p1_jump_cmd), .punch_cmd(p1_punch_cmd), .punch_val(p1_punch_val),
-       // .kick_cmd(p1_kick_cmd), .kick_val(p1_kick_val), .H_speed(p1_H_speed),
-       .H_speed(p1_H_speed),
-       .powerUp_cmd(p1_charging), .powerUp_val(p1_charge), .take_hit_pulse(p2_hit_p1),
-       .incoming_damage_val(p1_incoming_damage_val), .pos_x(p1_x), .pos_y(p1_y),
-       .facing_right(p1_dir), .hp(p1_hp), .is_punching(p1_is_punching),
-       // .is_kicking(p1_is_kicking), .outgoing_damage_val(p1_outgoing_damage_val)
-       .is_dead(p1_dead), .outgoing_damage_val(p1_outgoing_damage_val), .sprite_state(p1_state), .play_en(game_state == 2'd1),
-       .opponent_x(p2_x), .is_move_left(p1_is_move_left), .is_move_right(p1_is_move_right), .is_jumping(p1_is_jumping), .player(0),
-		 .match_over(match_over), .i_won(p1_winner)
-   );
-   player_controller #(.START_X(p2_start_x), .START_FACING(0)) p2(
-       .clk(CLOCK_50), .reset(start_new_round_wire), .h_move_cmd(p2_h_move),
-       .jump_cmd(p2_jump_cmd), .punch_cmd(p2_punch_cmd), .punch_val(p2_punch_val),
-       // .kick_cmd(p2_kick_cmd), .kick_val(p2_kick_val), .H_speed(p2_H_speed),
-       .H_speed(p2_H_speed),
-       .powerUp_cmd(p2_charging), .powerUp_val(p2_charge), .take_hit_pulse(p1_hit_p2),
-       .incoming_damage_val(p2_incoming_damage_val), .pos_x(p2_x), .pos_y(p2_y),
-       .facing_right(p2_dir), .hp(p2_hp), .is_punching(p2_is_punching),
-       // .is_kicking(p2_is_kicking), .outgoing_damage_val(p2_outgoing_damage_val)
-       .is_dead(p2_dead), .outgoing_damage_val(p2_outgoing_damage_val), .sprite_state(p2_state), .play_en(game_state == 2'd1),
-       .opponent_x(p1_x), .is_move_left(p2_is_move_left), .is_move_right(p2_is_move_right), .is_jumping(p2_is_jumping), .player(1),
-		 .match_over(match_over), .i_won(p2_winner)
-   );
-   collision_unit collision(
-       .p1_x(p1_x), .p1_y(p1_y), .p2_x(p2_x), .p2_y(p2_y),
-       .p1_punching(p1_is_punching), .p2_punching(p2_is_punching),
-       // .p1_kicking(p1_is_kicking), .p2_kicking(p2_is_kicking),
-       .p1_dir(p1_dir), .p2_dir(p2_dir),
-       // .p1_hit_p2_upper(p1_hit_p2_upper), .p1_hit_p2_lower(p1_hit_p2_lower),
-       // .p2_hit_p1_upper(p2_hit_p1_upper), .p2_hit_p1_lower(p2_hit_p1_lower)
-       .p1_is_jumping(p1_is_jumping), .p2_is_jumping(p2_is_jumping),
-       .p1_hit_p2(p1_hit_p2), .p2_hit_p1(p2_hit_p1)
-   );
-   // SPI_slave spi_connect(
-   //     .sys_clk(CLOCK_50), .SCLK(SPI_SCLK), .MOSI(SPI_MOSI), .SS(SPI_CS),
-   //     .MISO(.SPI_MISO), .p1_H_move_cmd(p1_h_move), .p1_jump_cmd(p1_jump_cmd),
-   //     .p1_punch_valid(p1_punch_cmd), .p1_punch_val(p1_punch_val),
-   //     .p1_chargeid(p1_charging), .p1_charge(p1_charge),
-   //     .p2_H_move_cmd(p2_h_move), .p2_jump_cmd(p2_jump_cmd),
-   //     .p2_punch_valid(p2_punch_cmd), .p2_punch_val(p2_punch_val),
-   //     .p2_chargeid(p2_charging), .p2_charge(p2_charge),
-   //     .p1_win_in(p2_dead), .p2_win_in(p1_dead), .p1_hit_p2(p1_hit_p2), .p2_hit_p1(p2_hit_p1)
-   // );
+
 endmodule
