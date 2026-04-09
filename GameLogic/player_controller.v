@@ -31,7 +31,7 @@ module player_controller(
     //to game engine, game_top
     output reg [6:0] hp,
     output reg is_charging,
-    output [4:0] charge_bar, //out of 25 to go to vga
+    output reg [4:0] charge_bar, //out of 25 to go to vga
     output reg full_charge,
     
     //to itself
@@ -40,6 +40,14 @@ module player_controller(
     //idk honestly
     input wire     player_num // 0 for P1, 1 for P2
 );
+    initial begin
+        player_dir = ~player_num;
+        player_state = 0;
+        hp         = 7'd50;
+        is_charging = 0;
+        charge_bar = 0;
+        full_charge = 0;
+    end
 
     localparam MAX_WIDTH = 10'd160;
     localparam punch_mul = 16'd5;
@@ -88,7 +96,7 @@ module player_controller(
    wire [9:0] opp_hurtbox_left  = opponent_x + opp_offset_x;
    wire [9:0] opp_hurtbox_right = opp_hurtbox_left + opp_hurtbox_w;
 
-reg [1:0] prev_state;
+reg [1:0] prev_state = START;
 
 //state machines
     always @(posedge clk) begin
@@ -123,8 +131,6 @@ reg [1:0] prev_state;
                 is_charging <= 1'b1;
                 charge_timer <= 23'd0;
             end
-
-
             
         end
         else if (prev_state == START && game_state == GAME) begin

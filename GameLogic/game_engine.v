@@ -19,6 +19,11 @@ module game_engine(
 
     localparam START = 3'd0, GAME = 3'd1, KO = 3'd2;
 
+    initial begin
+        game_state = 0;
+        time_left = 16;
+    end
+
 //6 second timer for game time
     time_left = 5'd16;     // Starts at 16
     reg [28:0] game_counter = 29'd0;  // Counter for the 50 MHz clock
@@ -68,7 +73,8 @@ module game_engine(
         end
 end
 //state machine
-    reg [2:0] curr_state, next_state;
+    reg [2:0] curr_state = START;
+    reg [2:0] next_state;
 
     always @(posedge clk or posedge rst_button) begin
         if (rst_button) begin

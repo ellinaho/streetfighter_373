@@ -45,10 +45,13 @@ module vga_top(
     parameter START = 0, GAME = 1, KO = 2;
 
 //initial x, y
-    p1_x = 10'd1009; //sprite top left coordinate
-    p1_y = GROUND_LEVEL; 
-    p2_x = 10'd110; //sprite top left coordinate
-    p2_y = GROUND_LEVEL; 
+
+    initial begin
+        p1_x = 10'd1009; //sprite top left coordinate
+        p1_y = GROUND_LEVEL; 
+        p2_x = 10'd110; //sprite top left coordinate
+        p2_y = GROUND_LEVEL; 
+    end
 
 //registers 
     reg [3:0] p1_frame = 0;
