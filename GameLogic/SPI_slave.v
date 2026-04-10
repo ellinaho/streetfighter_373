@@ -479,12 +479,23 @@ module SPI_slave (
     reg [7:0] tx_buffer;
     always@(posedge sys_clk) begin
         if (ss_start) begin
-            tx_buffer <= {p1_hit_p2, p2_hit_p1, p1_win_in, p2_win_in, 4'b0000};
+            tx_buffer <= {
+                // Byte 0: Hits and Wins
+                p1_hit_p2, p2_hit_p1, p1_win_in, p2_win_in, 4'b0000, 
+                
+                // Byte 1: Your new 2nd byte of data (Jumps and punches)
+                p1_jump, p2_jump, p1_punch, p2_punch, 4'b0000,
+                
+                // Bytes 2 & 3: Empty padding to complete the 4-byte transfer
+                p1_charging, p2_charging, 6'b000000,
+
+                8'b0000_0000
+            };
         end
         else if (ss_active && sclk_fall) begin
-            tx_buffer   <= {tx_buffer[6:0], 1'b0};
+            tx_buffer <= {tx_buffer[30:0], 1'b0};
         end
     end
 
-    assign MISO = (ss_active) ? tx_buffer[7] : 1'bz;
+    assign MISO = (ss_active) ? tx_buffer[31] : 1'bz;
 endmodule
