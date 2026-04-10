@@ -48,16 +48,18 @@ module fpga_top(
     assign p1_punch_cmd    =   ~KEY[1];
     assign p1_jump_cmd    =   ~KEY[3];
     assign p1_punch_val =   SW[3:0];
-    assign p1_charging = SW[13];
+    assign p1_charge_cmd = SW[13];
     assign p1_move_cmd	=   SW[17:16];
 
     assign p2_punch_cmd = 1'b0;
     assign p2_jump_cmd = 1'b0;
     assign p2_punch_val = 0;
-    assign p2_charging = SW[12];
+    assign p2_charge_cmd = SW[12];
 
     assign p1_start_button = SW[15];
     assign p2_start_button = SW[14];
+	 assign rst_button = ~KEY[0];
+	 
 
 
 vga_top top1(
@@ -84,7 +86,7 @@ vga_top top1(
     .VGA_CLK     (VGA_CLK),
     .VGA_R       (VGA_R),
     .VGA_G       (VGA_G),
-    .VGA_B       (VGA_B)
+    .VGA_B       (VGA_B),
 
     .p1_x(p1_x),
     .p1_y(p1_y),
@@ -93,7 +95,7 @@ vga_top top1(
 );
 
 game_top top2(
-    .CLOCK_50(clk)
+    .CLOCK_50(clk),
 
     .p1_x(p1_x),
     .p1_y(p1_y),
@@ -130,7 +132,8 @@ game_top top2(
 
     //testing? maybe keep
     .p1_start_button(p1_start_button),
-    .p2_start_button(p2_start_button)
+    .p2_start_button(p2_start_button),
+	 .rst_button(rst_button)
 
 );
 

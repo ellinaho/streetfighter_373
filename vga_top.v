@@ -1,20 +1,20 @@
 module vga_top(
     input CLOCK_50,
 
-    input [3:0] p1_state;
-    input p1_charging;
-    input [4:0] p1_charge;
-    input [5:0] p1_hp;
-    input p1_dir; //1 is facing right?
+    input [3:0] p1_state,
+    input p1_charging,
+    input [4:0] p1_charge,
+    input [5:0] p1_hp,
+    input p1_dir, //1 is facing right?
 
-    input [3:0] p2_state;
-    input p2_charging;
-    input [4:0] p2_charge;
-    input  [5:0] p2_hp;
-    input p2_dir;  
+    input [3:0] p2_state,
+    input p2_charging,
+    input [4:0] p2_charge,
+    input  [5:0] p2_hp,
+    input p2_dir, 
 
-    input [1:0] game_state;
-    input [6:0] time_left;
+    input [1:0] game_state,
+    input [6:0] time_left,
 
     output VGA_HS,
     output VGA_VS,
@@ -28,7 +28,7 @@ module vga_top(
     output reg [9:0] p1_x,
     output reg [9:0] p1_y, 
     output reg [9:0] p2_x,
-    output reg [9:0] p2_y, 
+    output reg [9:0] p2_y
 );
 
 //shared parameters!
@@ -71,9 +71,27 @@ module vga_top(
     reg [5:0] anim_timer1 = 5'd0, anim_timer2 = 5'd0;
 	reg p1_half_done = 0, p2_half_done = 0; 
 
-
+	reg [1:0] curr_state = 0;
+    reg [1:0] prev_state = 0;
 //animations, modifies frame + xy coordinates of player sprite
     always @(negedge VGA_VS) begin
+	 
+		prev_state <= curr_state;
+		  curr_state <= game_state;
+		  if ((curr_state == START) && (prev_state == KO)) begin
+				p1_frame <= 0;
+				p2_frame <= 0;
+				p1_x <= 10'd1009;
+				p2_x <= 10'd110;
+				p1_y <= GROUND_LEVEL;
+				p2_y <= GROUND_LEVEL;
+				
+				anim_timer1 <= 0;
+				anim_timer2 <= 0;
+				p1_half_done <= 0;
+				p2_half_done <= 0;
+		  end else begin
+			 
         case(p1_state)
             IDLE: begin
                 anim_timer1 <= anim_timer1 + 1;
@@ -408,23 +426,9 @@ module vga_top(
                 end
             end
         endcase
-    end
+			end
+	 end
 
-    reg [1:0] curr_state = 0;
-    reg [1:0] prev_state = 0;
-    always @(*) begin
-        prev_state <= curr_state;
-        curr_state <= game_state;
-        if ((curr_state == START) && (prev_state == KO)) begin
-            p1_frame <= 0;
-            p2_frame <= 0;
-            p1_x <= 10'd1009;
-            p2_x <= 10'd110;
-            p1_y <= GROUND_LEVEL;
-            p2_y <= GROUND_LEVEL;
-        end
-    end
-    
 //ROM WIRES declaration
     wire [16:0] p1_rom_addr, p2_rom_addr; //change bits
     wire [14:0] bg_rom_addr, elem_rom_addr;
