@@ -361,28 +361,28 @@ module SPI_slave (
     output wire MISO,
 
     // --- OUTGOING COMMANDS: Player 1 (To p1_controller) ---
-    output reg [1:0] p1_H_move_cmd,
-    output reg       p1_jump_cmd,
-    output reg       p1_punch_valid,
-    output reg [3:0] p1_punch_val,      // Increased to 4 bits for base damage
-    output reg       p1_PowerUp_valid,
-    output reg [5:0] p1_PowerUp_val,    // Expanded to 6 bits for integer float math (e.g. 24 = 2.4x)
+    output reg [1:0]p1_H_move_cmd,
+    output reg      p1_jump_cmd,
+    output reg      p1_punch_cmd,
+    output reg      p1_charge_cmd,
 
     // --- OUTGOING COMMANDS: Player 2 (To p2_controller) ---
-    output reg [1:0] p2_H_move_cmd,
-    output reg       p2_jump_cmd,
-    output reg       p2_punch_valid,
-    output reg [3:0] p2_punch_val,      // Increased to 4 bits
-    output reg       p2_PowerUp_valid,
-    output reg [5:0] p2_PowerUp_val,    // Expanded to 6 bits 
+    output reg [1:0]p2_H_move_cmd,
+    output reg      p2_jump_cmd,
+    output reg      p2_punch_cmd,
+    output reg      p2_charge_cmd,
 
     // --- INCOMING TELEMETRY: Game State (From Engine/Referee) ---
-    // input wire [6:0] p1_hp_in,
-    // input wire [6:0] p2_hp_in,
-    input wire       p1_win_in,
-    input wire       p2_win_in,
-    input wire       p1_hit_p2,         // Unified hit detection (Replaces upper/lower)
-    input wire       p2_hit_p1          // Unified hit detection (Replaces upper/lower)
+    input wire      p1_win_in,
+    input wire      p2_win_in,
+    input wire      p1_hit_p2,         
+    input wire      p2_hit_p1,        
+    input wire      p1_jump,
+    input wire      p2_jump,
+    input wire      p1_punch,
+    input wire      p2_punch,
+    input wire      p1_charging,
+    input wire      p2_charging
 );
 
     reg [2:0] SCLK_sync;
@@ -425,7 +425,7 @@ module SPI_slave (
         end
     end
 
-    reg [1:0] byte_count;
+    reg byte_count;
     reg p1_active, p2_active;
 
     always @(posedge sys_clk) begin
@@ -448,29 +448,29 @@ module SPI_slave (
                     if (p1_active)  begin
                         p1_H_move_cmd   <= byte_to_process[7:6];
                         p1_jump_cmd     <= byte_to_process[5];
-                        p1_punch_valid  <= byte_to_process[4];
-                        p1_punch_val    <= byte_to_process[3:0];
+                        p1_punch_cmd  <= byte_to_process[4];
+                        p1_charge_cmd    <= byte_to_process[3];
                     end
                     else if (p2_active) begin
                         p2_H_move_cmd   <= byte_to_process[7:6];
                         p2_jump_cmd     <= byte_to_process[5];
-                        p2_punch_valid  <= byte_to_process[4];
-                        p2_punch_val    <= byte_to_process[3:0];
+                        p2_punch_cmd  <= byte_to_process[4];
+                        p2_charge_cmd    <= byte_to_process[3];
                     end
-                    byte_count <= 2;
-                end
-
-                2:  begin   // Power-up Multiplier
-                    if (p1_active) p1_PowerUp_val  <= byte_to_process[7:2];
-                    else if (p2_active) p2_PowerUp_val  <= byte_to_process[7:2];
-                    byte_count <= 3;
-                end
-
-                3:  begin   // Status/Padding
-                    if (p1_active) p1_PowerUp_valid  <= byte_to_process[7];
-                    else if (p2_active) p2_PowerUp_valid  <= byte_to_process[7];
                     byte_count <= 0;
                 end
+
+                // 2:  begin   // Power-up Multiplier
+                //     if (p1_active) p1_PowerUp_val  <= byte_to_process[7:2];
+                //     else if (p2_active) p2_PowerUp_val  <= byte_to_process[7:2];
+                //     byte_count <= 3;
+                // end
+
+                // 3:  begin   // Status/Padding
+                //     if (p1_active) p1_PowerUp_valid  <= byte_to_process[7];
+                //     else if (p2_active) p2_PowerUp_valid  <= byte_to_process[7];
+                //     byte_count <= 0;
+                // end
             endcase
         end
     end
@@ -481,21 +481,16 @@ module SPI_slave (
         if (ss_start) begin
             tx_buffer <= {
                 // Byte 0: Hits and Wins
-                p1_hit_p2, p2_hit_p1, p1_win_in, p2_win_in, 4'b0000, 
+                p1_hit_p2, p2_hit_p1, p1_win_in, p2_win_in, p1_jump, p2_jump, p1_punch, p2_punch, 
                 
                 // Byte 1: Your new 2nd byte of data (Jumps and punches)
-                p1_jump, p2_jump, p1_punch, p2_punch, 4'b0000,
-                
-                // Bytes 2 & 3: Empty padding to complete the 4-byte transfer
                 p1_charging, p2_charging, 6'b000000,
-
-                8'b0000_0000
             };
         end
         else if (ss_active && sclk_fall) begin
-            tx_buffer <= {tx_buffer[30:0], 1'b0};
+            tx_buffer <= {tx_buffer[15:0], 1'b0};
         end
     end
 
-    assign MISO = (ss_active) ? tx_buffer[31] : 1'bz;
+    assign MISO = (ss_active) ? tx_buffer[15] : 1'bz;
 endmodule
