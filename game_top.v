@@ -34,7 +34,8 @@ module game_top(
 
     //testing? maybe keep
     input p1_start_button,
-    input p2_start_button
+    input p2_start_button,
+	 input rst_button
 );
 
     //driven by collision unit
@@ -68,7 +69,7 @@ module game_top(
 
     game_engine game(
         .clk(CLOCK_50), 
-        .rst_button(~KEY[0]), 
+        .rst_button(rst_button), 
         .p1_ready(p1_start_button || p1_fullcharge),  //testing
         .p2_ready(p2_start_button || p2_fullcharge),  //testing
         .p1_hp(p1_hp), 
@@ -78,8 +79,10 @@ module game_top(
         .winner(winner)
    );
 
-    player_controller p1(
-        .clk(CLOCK_50), 
+    player_controller #(
+		.player_num(0)
+	 ) p1(
+        .CLOCK_50(CLOCK_50), 
         .game_state(game_state),
         .winner(winner),
         .move_cmd(p1_move_cmd),
@@ -95,16 +98,18 @@ module game_top(
 
         //outputs
         .player_dir(p1_dir), 
+		  .player_state(p1_state),
         .hp(p1_hp), 
         .is_charging(p1_charging),
         .charge_bar(p1_charge),
         .full_charge(p1_fullcharge),
         .damage_val_out(p1_damage_val_out),
-        .player_num(1)
    );
 
-   player_controller p1(
-        .clk(CLOCK_50), 
+   player_controller #(
+		.player_num(1)
+	 )p2(
+        .CLOCK_50(CLOCK_50), 
         .game_state(game_state),
         .winner(winner),
         .move_cmd(p2_move_cmd),
@@ -120,12 +125,12 @@ module game_top(
 
         //outputs
         .player_dir(p2_dir), 
+		  .player_state(p2_state),
         .hp(p2_hp), 
         .is_charging(p2_charging),
         .charge_bar(p2_charge),
         .full_charge(p2_fullcharge),
         .damage_val_out(p2_damage_val_out),
-        .player_num(2)
    );
 
 

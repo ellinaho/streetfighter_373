@@ -1,6 +1,21 @@
 module vga_top(
     input CLOCK_50,
 
+    input [3:0] p1_state,
+    input p1_charging,
+    input [4:0] p1_charge,
+    input [5:0] p1_hp,
+    input p1_dir, //1 is facing right?
+
+    input [3:0] p2_state,
+    input p2_charging,
+    input [4:0] p2_charge,
+    input  [5:0] p2_hp,
+    input p2_dir, 
+
+    input [1:0] game_state,
+    input [6:0] time_left,
+
     output VGA_HS,
     output VGA_VS,
     output VGA_BLANK_N,
@@ -8,40 +23,41 @@ module vga_top(
     output VGA_CLK,
     output [7:0] VGA_R,
     output [7:0] VGA_G,
-    output [7:0] VGA_B
+    output [7:0] VGA_B,
+
+    output reg [9:0] p1_x,
+    output reg [9:0] p1_y, 
+    output reg [9:0] p2_x,
+    output reg [9:0] p2_y
 );
 
-//Sprite and background dimensions & coordinates
+//shared parameters!
     parameter GAME_W = 160, GAME_H = 120;
     parameter SPRITE_H = 53, SPRITE_W = 64;
     parameter FLOOR_Y = 115;
     parameter GROUND_LEVEL = FLOOR_Y - SPRITE_H;
 
-//p1 and p2 and game registers
-    reg [9:0] p1_x = 10'd1009; //sprite top left coordinate
-    reg [9:0] p1_y = GROUND_LEVEL; 
-    reg [3:0] p1_state = IDLE; 
+    parameter RIGHT = 1, LEFT = 0;
+
+    parameter IDLE = 0, WALK = 1, PUNCH = 2, JUMP = 3; 
+    parameter JUMP_PUNCH = 4, GOT_HIT = 5, LOSE = 6, WIN = 7;
+
+    parameter START = 0, GAME = 1, KO = 2;
+
+//initial x, y
+
+    initial begin
+        p1_x = 10'd1009; //sprite top left coordinate
+        p1_y = GROUND_LEVEL; 
+        p2_x = 10'd110; //sprite top left coordinate
+        p2_y = GROUND_LEVEL; 
+    end
+
+//registers 
     reg [3:0] p1_frame = 0;
-    reg p1_charging = 1;
-    reg [4:0] p1_charge = 15;
-    reg [5:0] p1_hp = 20;
-
-    reg [9:0] p2_x = 10'd110; //sprite top left coordinate
-    reg [9:0] p2_y = GROUND_LEVEL; 
-    reg [3:0] p2_state = IDLE; 
     reg [3:0] p2_frame = 0;
-    reg p2_charging = 1;
-    reg [4:0] p2_charge = 15;
-    reg [5:0] p2_hp = 20;
 
-    reg [1:0] game_state = 0; 
-    reg p1_dir = 0; //0 is facing right?
-    reg p2_dir = 1;  
-	reg [6:0] time_left = 14;
-
-
-//strictly animations
-    //Animations, dealing with frames
+//Animations, dealing with frames
     parameter IDLE_FRAMES = 4;
     parameter WALK_FRAMES = 5, WALK_SPEED = 1; 
     parameter PUNCH_FRAMES = 2;
@@ -51,15 +67,31 @@ module vga_top(
     parameter GOT_HIT_FRAMES = 2;
     parameter LOSE_FRAMES = 6, LOSE_SPEED = 2; 
     parameter WIN_FRAMES = 3;
+
     reg [5:0] anim_timer1 = 5'd0, anim_timer2 = 5'd0;
 	reg p1_half_done = 0, p2_half_done = 0; 
-    parameter RIGHT = 0, LEFT = 1;
 
-    parameter IDLE = 0, WALK = 1, PUNCH = 2, JUMP = 3; 
-    parameter JUMP_PUNCH = 4, GOT_HIT = 5, LOSE = 6, WIN = 7;
-
-    //animations, modifies frame + xy coordinates of player sprite
+	reg [1:0] curr_state = 0;
+    reg [1:0] prev_state = 0;
+//animations, modifies frame + xy coordinates of player sprite
     always @(negedge VGA_VS) begin
+	 
+		prev_state <= curr_state;
+		  curr_state <= game_state;
+		  if ((curr_state == START) && (prev_state != START)) begin
+				p1_frame <= 0;
+				p2_frame <= 0;
+				p1_x <= 10'd1009;
+				p2_x <= 10'd110;
+				p1_y <= GROUND_LEVEL;
+				p2_y <= GROUND_LEVEL;
+				
+				anim_timer1 <= 0;
+				anim_timer2 <= 0;
+				p1_half_done <= 0;
+				p2_half_done <= 0;
+		  end else begin
+			 
         case(p1_state)
             IDLE: begin
                 anim_timer1 <= anim_timer1 + 1;
@@ -73,9 +105,11 @@ module vga_top(
             end   
             WALK: begin
                 //update coordinates 
-                if (p1_dir == RIGHT) begin p1_x <= p1_x + WALK_SPEED; end
-                else begin p1_x <= p1_x - WALK_SPEED; end
-
+                if (p1_dir == RIGHT) begin
+						 if ((p1_x + 10'd64 - 10'd15) < 10'd160) begin p1_x <= p1_x + WALK_SPEED; end 
+					end else begin 
+						 if ((p1_x + 10'd15) > 0 && (p1_x + 10'd15) < 10'd512) begin p1_x <= p1_x - WALK_SPEED; end 
+					end
                 anim_timer1 <= anim_timer1 + 1;
 
                 if (anim_timer1 >= (40 /WALK_FRAMES - 1)) begin 
@@ -110,10 +144,10 @@ module vga_top(
             JUMP: begin
                 //x coordinate: 
                 if (p1_dir == RIGHT) begin
-                    if (p1_x < (GAME_W - SPRITE_W)) begin p1_x <= p1_x + JUMP_SPEED_X; end //change logic
-                end else begin 
-                    if (p1_x > 0) begin p1_x <= p1_x - JUMP_SPEED_X; end //change logic
-                end 
+						 if ((p1_x + 10'd64 - 10'd15) < 10'd160) begin p1_x <= p1_x + JUMP_SPEED_X; end 
+					end else begin 
+						 if ((p1_x + 10'd15) > 0 && (p1_x + 10'd15) < 10'd512) begin p1_x <= p1_x - JUMP_SPEED_X; end 
+					end
                 
                 if (~p1_half_done) begin
                     p1_y <= p1_y - JUMP_SPEED_Y;
@@ -145,10 +179,10 @@ module vga_top(
             JUMP_PUNCH: begin
                 //x coordinate: 
                 if (p1_dir == RIGHT) begin
-                    if (p1_x < (GAME_W - SPRITE_W)) begin p1_x <= p1_x + JUMP_SPEED_X; end //change logic
-                end else begin 
-                    if (p1_x > 0) begin p1_x <= p1_x - JUMP_SPEED_X; end //change logic
-                end 
+						 if ((p1_x + 10'd64 - 10'd15) < 10'd160) begin p1_x <= p1_x + JUMP_SPEED_X; end 
+					end else begin 
+						 if ((p1_x + 10'd15) > 0 && (p1_x + 10'd15) < 10'd512) begin p1_x <= p1_x - JUMP_SPEED_X; end 
+					end
                 
                 if (~p1_half_done) begin
                     p1_y <= p1_y - JUMP_SPEED_Y;
@@ -210,9 +244,7 @@ module vga_top(
                 if (anim_timer1 >= (50/LOSE_FRAMES - 1)) begin 
                     anim_timer1 <= 0;
                     if (p1_frame >= (LOSE_FRAMES - 1)) begin
-                        //p1_frame <= LOSE_FRAMES - 1;
-								p1_x <= 10'd10;
-								p1_frame <= 0;
+                        p1_frame <= LOSE_FRAMES - 1;
                     end else 
                         p1_frame <= p1_frame + 1;
                 end
@@ -241,8 +273,11 @@ module vga_top(
             end   
             WALK: begin
                 //update coordinates 
-                if (p2_dir == RIGHT) begin p2_x <= p2_x + WALK_SPEED; end
-                else begin p2_x <= p2_x - WALK_SPEED; end
+                if (p2_dir == RIGHT) begin
+							 if ((p2_x + 10'd64 - 10'd15) < 10'd160) begin p2_x <= p2_x + WALK_SPEED; end 
+						end else begin 
+							 if ((p2_x + 10'd15) > 0 && (p2_x + 10'd15) < 10'd512) begin p2_x <= p2_x - WALK_SPEED; end 
+						end
 
                 anim_timer2 <= anim_timer2 + 1;
 
@@ -269,7 +304,6 @@ module vga_top(
                         if (p2_frame <= 0) begin
                             p2_half_done = 0;
                             p2_frame <= 0;
-                            //p2_state <= IDLE;
                         end else begin
                             p2_frame <= p2_frame - 1;
                         end
@@ -279,10 +313,10 @@ module vga_top(
             JUMP: begin
                 //x coordinate: 
                 if (p2_dir == RIGHT) begin
-                    if (p2_x < (GAME_W - SPRITE_W)) begin p2_x <= p2_x + JUMP_SPEED_X; end //change logic
-                end else begin 
-                    if (p2_x > 0) begin p2_x <= p2_x - JUMP_SPEED_X; end //change logic
-                end 
+						 if ((p2_x + 10'd64 - 10'd15) < 10'd160) begin p2_x <= p2_x + JUMP_SPEED_X; end 
+					end else begin 
+						 if ((p2_x + 10'd15) > 0 && (p2_x + 10'd15) < 10'd512) begin p2_x <= p2_x - JUMP_SPEED_X; end 
+					end
                 
                 if (~p2_half_done) begin
                     p2_y <= p2_y - JUMP_SPEED_Y;
@@ -314,10 +348,11 @@ module vga_top(
             JUMP_PUNCH: begin
                 //x coordinate: 
                 if (p2_dir == RIGHT) begin
-                    if (p2_x < (GAME_W - SPRITE_W)) begin p2_x <= p2_x + JUMP_SPEED_X; end //change logic
+                    if ((p2_x + SPRITE_W - 15) < GAME_W) begin p2_x <= p2_x + JUMP_SPEED_X; 
+                    end 
                 end else begin 
-                    if (p2_x > 0) begin p2_x <= p2_x - JUMP_SPEED_X; end //change logic
-                end 
+                    if ((p2_x + 15) > 0 && (p2_x + 15) < 512) begin p2_x <= p2_x - JUMP_SPEED_X; end 
+                end
                 
                 if (~p2_half_done) begin
                     p2_y <= p2_y - JUMP_SPEED_Y;
@@ -361,7 +396,6 @@ module vga_top(
                         if (p2_frame <= 0) begin
                             p2_half_done = 0;
                             p2_frame <= 0;
-                            //p2_state <= IDLE;
                         end else begin
                             p2_frame <= p2_frame - 1;
                         end
@@ -379,7 +413,6 @@ module vga_top(
                     anim_timer2 <= 0;
                     if (p2_frame >= (LOSE_FRAMES - 1)) begin
                         p2_frame <= LOSE_FRAMES - 1;
-								p2_x <= 10'd65;
                     end else 
                         p2_frame <= p2_frame + 1;
                 end
@@ -395,9 +428,10 @@ module vga_top(
                 end
             end
         endcase
-    end
+			end
+	 end
 
-    //ROM WIRES declaration
+//ROM WIRES declaration
     wire [16:0] p1_rom_addr, p2_rom_addr; //change bits
     wire [14:0] bg_rom_addr, elem_rom_addr;
     wire [7:0] bg_rom_data, p1_rom_data, p2_rom_data, elem_rom_data;

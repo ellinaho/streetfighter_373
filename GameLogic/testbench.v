@@ -35,7 +35,7 @@ module tb_fighting_game();
     wire       match_over, p1_winner, p2_winner;
 
     reg [9:0] p1_x, p1_y, p2_x, p2_y;
-    wire       p1_facing_right, p2_facing_right;
+    wire       p1_dir, p2_dir;
     wire       p1_is_punching, p2_is_punching;
     wire       p1_dead, p2_dead;
     wire [6:0] p1_outgoing_damage, p2_outgoing_damage;
@@ -60,7 +60,7 @@ module tb_fighting_game();
         .h_move_cmd(p1_h_move), .jump_cmd(p1_jump_cmd), .punch_cmd(p1_punch_cmd), .punch_val(p1_punch_val),
         .H_speed(p1_H_speed), .powerUp_cmd(p1_powerUp_cmd), .powerUp_val(p1_powerUp_val),
         .take_hit_pulse(p2_hit_p1), .incoming_damage_val(p2_outgoing_damage), .opponent_x(p2_x),
-        .pos_x(p1_x), .pos_y(p1_y), .facing_right(p1_facing_right), .hp(p1_hp),
+        .pos_x(p1_x), .pos_y(p1_y), .facing_right(p1_dir), .hp(p1_hp),
         .is_punching(p1_is_punching), .is_dead(p1_dead), .outgoing_damage_val(p1_outgoing_damage), .sprite_state(p1_sprite),
         .match_over(match_over), .i_won(p1_winner), .is_move_left(p1_is_move_left), .is_move_right(p1_is_move_right), .is_jumping(p1_is_jumping),
         .player(1'b0) // ADDED: Tells module this is Player 1
@@ -72,7 +72,7 @@ module tb_fighting_game();
         .h_move_cmd(p2_h_move), .jump_cmd(p2_jump_cmd), .punch_cmd(p2_punch_cmd), .punch_val(p2_punch_val),
         .H_speed(p2_H_speed), .powerUp_cmd(p2_powerUp_cmd), .powerUp_val(p2_powerUp_val),
         .take_hit_pulse(p1_hit_p2), .incoming_damage_val(p1_outgoing_damage), .opponent_x(p1_x),
-        .pos_x(p2_x), .pos_y(p2_y), .facing_right(p2_facing_right), .hp(p2_hp),
+        .pos_x(p2_x), .pos_y(p2_y), .facing_right(p2_dir), .hp(p2_hp),
         .is_punching(p2_is_punching), .is_dead(p2_dead), .outgoing_damage_val(p2_outgoing_damage), .sprite_state(p2_sprite),
         .match_over(match_over), .i_won(p2_winner), .is_move_left(p2_is_move_left), .is_move_right(p2_is_move_right), .is_jumping(p2_is_jumping),
         .player(1'b1) // ADDED: Tells module this is Player 2
@@ -81,7 +81,7 @@ module tb_fighting_game();
     collision_unit collision(
         .p1_x(p1_x), .p1_y(p1_y), .p2_x(p2_x), .p2_y(p2_y),
         .p1_punching(p1_is_punching), .p2_punching(p2_is_punching),
-        .p1_facing_right(p1_facing_right), .p2_facing_right(p2_facing_right),
+        .p1_dir(p1_dir), .p2_dir(p2_dir),
         .p1_is_jumping(p1_is_jumping), // ADDED: Jump Punch Logic
         .p2_is_jumping(p2_is_jumping), // ADDED: Jump Punch Logic
         .p1_hit_p2(p1_hit_p2), .p2_hit_p1(p2_hit_p1)
