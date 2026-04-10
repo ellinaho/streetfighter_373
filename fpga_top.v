@@ -44,6 +44,14 @@ module fpga_top(
     wire [9:0] p2_x, p2_y;
 
 //spi placeholddersfsdf
+	 wire       p1_jump_cmd, p2_jump_cmd;
+    wire       p1_punch_cmd, p2_punch_cmd;
+    wire [3:0] p1_punch_val, p2_punch_val; // Now it can hold all 4 bits!
+    wire       p1_charge_cmd, p2_charge_cmd;
+    wire [1:0] p1_move_cmd, p2_move_cmd;   // Now it can hold both bits!
+
+    wire       p1_start_button, p2_start_button;
+    wire       rst_button;
 
     assign p1_punch_cmd    =   ~KEY[1];
     assign p1_jump_cmd    =   ~KEY[3];
@@ -95,7 +103,7 @@ vga_top top1(
 );
 
 game_top top2(
-    .CLOCK_50(clk),
+    .CLOCK_50(CLOCK_50),
 
     .p1_x(p1_x),
     .p1_y(p1_y),

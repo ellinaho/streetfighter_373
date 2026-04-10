@@ -1,4 +1,6 @@
-module player_controller(
+module player_controller#(
+	parameter player_num = 0
+)(
     input CLOCK_50,
 
     //from game engine
@@ -35,10 +37,7 @@ module player_controller(
     output reg full_charge,
     
     //to itself
-    output wire [6:0] damage_val_out, 
-
-    //idk honestly
-    input wire     player_num // 0 for P1, 1 for P2
+    output wire [6:0] damage_val_out
 );
     initial begin
         player_dir = ~player_num;
@@ -56,7 +55,7 @@ module player_controller(
     parameter IDLE = 0, WALK = 1, PUNCH = 2, JUMP = 3; 
     parameter JUMP_PUNCH = 4, GOT_HIT = 5, LOSE = 6, WIN = 7;
 
-    reg [23:0] action_timer;
+    reg [25:0] action_timer;
     localparam [25:0] PUNCH_TIME      = 26'd20_000_000;
     localparam [25:0] GOT_HIT_TIME    = 26'd16_666_667;
     localparam [25:0] JUMP_TIME       = 26'd53_333_333;

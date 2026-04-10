@@ -79,7 +79,9 @@ module game_top(
         .winner(winner)
    );
 
-    player_controller p1(
+    player_controller #(
+		.player_num(0)
+	 ) p1(
         .CLOCK_50(CLOCK_50), 
         .game_state(game_state),
         .winner(winner),
@@ -96,15 +98,17 @@ module game_top(
 
         //outputs
         .player_dir(p1_dir), 
+		  .player_state(p1_state),
         .hp(p1_hp), 
         .is_charging(p1_charging),
         .charge_bar(p1_charge),
         .full_charge(p1_fullcharge),
         .damage_val_out(p1_damage_val_out),
-        .player_num(0)
    );
 
-   player_controller p2(
+   player_controller #(
+		.player_num(1)
+	 )p2(
         .CLOCK_50(CLOCK_50), 
         .game_state(game_state),
         .winner(winner),
@@ -121,12 +125,12 @@ module game_top(
 
         //outputs
         .player_dir(p2_dir), 
+		  .player_state(p2_state),
         .hp(p2_hp), 
         .is_charging(p2_charging),
         .charge_bar(p2_charge),
         .full_charge(p2_fullcharge),
         .damage_val_out(p2_damage_val_out),
-        .player_num(1)
    );
 
 
