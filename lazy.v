@@ -1,21 +1,14 @@
-else if (move_cmd == 2'b01 && (my_hurtbox_right + H_speed < MAX_WIDTH)) begin
-    player_state <= WALK;
+//x coordinate: walk
+if (p1_dir == RIGHT) begin
+    if ((p1_x + 10'd64 - 10'd15) < 10'd160) begin p1_x <= p1_x + WALK_SPEED; end 
+end else begin 
+    if ((p1_x + 10'd15) > 0 && (p1_x + 10'd15) < 10'd512) begin p1_x <= p1_x - WALK_SPEED; end 
 end
-else if (move_cmd == 2'b10 && (my_hurtbox_left > H_speed && my_hurtbox_left < 512)) begin
-    player_state <= WALK;
+
+//jump and jumppunch
+if (p1_dir == RIGHT) begin
+    if ((p1_x + 10'd64 - 10'd15) < 10'd160) begin p1_x <= p1_x + JUMP_SPEED_X; end 
+end else begin 
+    if ((p1_x + 10'd15) > 0 && (p1_x + 10'd15) < 10'd512) begin p1_x <= p1_x - JUMP_SPEED_X; end 
 end
 
-
-// Going Left
-    else if (move_cmd == 2'b10) begin
-        // 1. First check if we have hit the wall (WITH UNDERFLOW PROTECTION)
-        if (my_hurtbox_left > H_speed && my_hurtbox_left < 512) begin
-
-WALK: begin
-    //update coordinates 
-    if (p1_dir == RIGHT) begin 
-        if ((p1_x + SPRITE_W - 15) < GAME_W) p1_x <= p1_x + WALK_SPEED;
-    end else begin 
-        if ((p1_x + 15) > 0 && (p1_x + 15) < 512) p1_x <= p1_x - WALK_SPEED;
-    end
-    // ... (leave animation timer alone)
