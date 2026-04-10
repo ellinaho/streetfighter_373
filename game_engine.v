@@ -21,7 +21,7 @@ module game_engine(
 
     initial begin
         game_state = 0;
-        time_left = 16;
+        time_left = 15;
     end
 
 //6 second timer for game time
@@ -108,7 +108,7 @@ end
         game_state = curr_state;
     end
 
-    assign winner = (curr_state != KO) ? 2'd0 :                  // If not KO, 0
-            (p2_hp == 0 && p1_hp > 0) ? 2'd1 :           // If P2 dead, P1 wins
-            (p1_hp == 0 && p2_hp > 0) ? 2'd2 : 2'd0;     // If P1 dead, P2 wins, else draw
+    assign winner = (curr_state != KO) ? 2'd2 :                  // If not KO, 0
+            (p2_hp == 0 && p1_hp > 0) ? 2'd0 :           // If P2 dead, P1 wins
+            (p1_hp == 0 && p2_hp > 0) ? 2'd1 : 2'd2;     // If P1 dead, P2 wins, else draw
 endmodule

@@ -58,8 +58,8 @@ module player_controller#(
     reg [25:0] action_timer;
     localparam [25:0] PUNCH_TIME      = 26'd20_000_000;
     localparam [25:0] GOT_HIT_TIME    = 26'd16_666_667;
-    localparam [25:0] JUMP_TIME       = 26'd53_333_333;
-    localparam [25:0] JUMP_PUNCH_TIME = 26'd53_333_333;
+    localparam [25:0] JUMP_TIME       = 26'd55_000_000;
+    localparam [25:0] JUMP_PUNCH_TIME = 26'd55_000_000;
 
     localparam START = 0, GAME = 1, KO = 2;
 
@@ -138,7 +138,7 @@ reg [1:0] prev_state = START;
         end
         else if (game_state == KO) begin
             if (winner == player_num) begin player_state <= WIN; end
-            else if (winner == 1'b0) begin player_state <= IDLE; end   
+            else if (winner == 2'b2) begin player_state <= IDLE; end   
             else begin player_state <= LOSE;   end
         end
         else if (prev_state == GAME && game_state == GAME) begin
@@ -168,7 +168,12 @@ reg [1:0] prev_state = START;
                             player_state <= JUMP_PUNCH;
                             action_timer <= JUMP_PUNCH_TIME;
                         end
-                        else if (move_cmd != 2'b00) player_state <= WALK;
+                        else if (move_cmd == 2'b01 && (my_hurtbox_right + H_speed < MAX_WIDTH)) begin
+									 player_state <= WALK;
+								end
+								else if (move_cmd == 2'b10 && (my_hurtbox_left > H_speed && my_hurtbox_left < 512)) begin
+									 player_state <= WALK;
+								end
                         else if (is_charging) begin 
                             // IF CURRENTLY CHARGING:
                             if (!charge_cmd) begin 
@@ -230,16 +235,18 @@ reg [1:0] prev_state = START;
                         // Going Left
                         else if (move_cmd == 2'b10) begin
                             // 1. First check if we have hit the wall
-                            if (my_hurtbox_left > H_speed) begin
-                                // 2. Next, check if we are hitting the opponent
-                                if ((my_hurtbox_left > opp_hurtbox_left) && (opp_hurtbox_right + H_speed + MIN_DIST > my_hurtbox_left)) begin
-                                    player_state <= IDLE; // TOO CLOSE: Blocked by opponent pushbox
-                                end else begin
-                                    player_dir <= 0;
-                                end
-                            end else begin
-                                player_state <= IDLE; // TOO CLOSE: Blocked by left wall
-                            end
+									 if (my_hurtbox_left > H_speed && my_hurtbox_left < 512) begin
+										 if (my_hurtbox_left > H_speed) begin
+											  // 2. Next, check if we are hitting the opponent
+											  if ((my_hurtbox_left > opp_hurtbox_left) && (opp_hurtbox_right + H_speed + MIN_DIST > my_hurtbox_left)) begin
+													player_state <= IDLE; // TOO CLOSE: Blocked by opponent pushbox
+											  end else begin
+													player_dir <= 0;
+											  end
+										 end else begin
+											  player_state <= IDLE; // TOO CLOSE: Blocked by left wall
+										 end
+									 end
                         end
                             
                         // Stopped pressing move buttons
@@ -266,6 +273,7 @@ reg [1:0] prev_state = START;
                         if (action_timer > 0) begin
                             action_timer <= action_timer - 1;
                         end else begin
+									charge_bar <= 0;
                             player_state <= IDLE;
                         end
                     end
