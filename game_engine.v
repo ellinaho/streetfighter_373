@@ -20,7 +20,7 @@ module game_engine(
     localparam START = 3'd0, GAME = 3'd1, KO = 3'd2;
 
     initial begin
-        game_state = 0;
+        game_state = 1; //change
         time_left = 15;
     end
 
@@ -72,7 +72,7 @@ module game_engine(
         end
 end
 //state machine
-    reg [2:0] curr_state = START;
+    reg [2:0] curr_state = GAME; //change
     reg [2:0] next_state;
 
     always @(posedge clk or posedge rst_button) begin
@@ -88,7 +88,8 @@ end
         next_state = curr_state;
         case (curr_state)
             START: begin
-                if (p1_ready && p2_ready) next_state = GAME;
+                //if (p1_ready && p2_ready) next_state = GAME;
+					 next_state = GAME; //change
             end
 
             GAME: begin

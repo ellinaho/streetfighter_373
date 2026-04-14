@@ -18,8 +18,8 @@ module fpga_top(
     input  wire        SPI_SCLK, // Clock from the microcontroller
     input  wire        SPI_CS,   // Chip select from the microcontroller
     input  wire        SPI_MOSI, // Data IN from the microcontroller
-    output wire        SPI_MISO  // Data OUT to the microcontroller (if needed)
-    
+    output wire        SPI_MISO,  // Data OUT to the microcontroller (if needed)
+    output wire [17:0] LEDR
 );
 
     //driven by player controller?
@@ -42,31 +42,42 @@ module fpga_top(
     //driven by vga 
     wire [9:0] p1_x, p1_y;
     wire [9:0] p2_x, p2_y;
+    wire [3:0] p1_frame, p2_frame;
+    wire p1_half_done, p2_half_done;
 
 //spi placeholddersfsdf
 	 wire       p1_jump_cmd, p2_jump_cmd;
     wire       p1_punch_cmd, p2_punch_cmd;
-    wire [3:0] p1_punch_val, p2_punch_val; // Now it can hold all 4 bits!
     wire       p1_charge_cmd, p2_charge_cmd;
     wire [1:0] p1_move_cmd, p2_move_cmd;   // Now it can hold both bits!
 
     wire       p1_start_button, p2_start_button;
     wire       rst_button;
+	 
+	 wire [1:0] winner;
+	 wire p1_win = (winner == 1) ? 1:0;
+	 wire p2_win = (winner == 2) ? 1:0;
+	 wire p1_hit_p2;
+	 wire p2_hit_p1;
+	 
 
-    assign p1_punch_cmd    =   ~KEY[1];
+    assign p1_punch_cmd    =   ~KEY[2];
     assign p1_jump_cmd    =   ~KEY[3];
-    assign p1_punch_val =   SW[3:0];
-    assign p1_charge_cmd = SW[13];
+    assign p1_charge_cmd = SW[15];
     assign p1_move_cmd	=   SW[17:16];
+	 assign rst_button = SW[7];
 
-    assign p2_punch_cmd = 1'b0;
-    assign p2_jump_cmd = 1'b0;
-    assign p2_punch_val = 0;
-    assign p2_charge_cmd = SW[12];
+    assign p2_punch_cmd = ~KEY[0];
+    assign p2_jump_cmd = ~KEY[1];
+    assign p2_charge_cmd = SW[2];
+	 assign p2_move_cmd = SW[1:0];
 
-    assign p1_start_button = SW[15];
-    assign p2_start_button = SW[14];
-	 assign rst_button = ~KEY[0];
+    assign p1_start_button = 0;
+    assign p2_start_button = 0;
+	 assign rst_button = SW[7];
+	 
+	 
+	 
 	 
 
 
@@ -99,7 +110,14 @@ vga_top top1(
     .p1_x(p1_x),
     .p1_y(p1_y),
     .p2_x(p2_x),
-    .p2_y(p2_y)
+    .p2_y(p2_y),
+
+    .p1_frame(p1_frame),
+    .p2_frame(p2_frame),
+
+    .p1_half_done(p1_half_done),
+    .p2_half_done(p2_half_done)
+
 );
 
 game_top top2(
@@ -108,18 +126,20 @@ game_top top2(
     .p1_x(p1_x),
     .p1_y(p1_y),
     .p2_x(p2_x),
-    .p2_y(p2_y),
+    .p2_y(p2_y),   
+    .p1_frame(p1_frame),
+    .p2_frame(p2_frame),
+    .p1_half_done(p1_half_done),
+    .p2_half_done(p2_half_done),
 
     //spi inputs
     .p1_jump_cmd(p1_jump_cmd),
     .p1_punch_cmd(p1_punch_cmd),
-    .p1_punch_val(p1_punch_val),   
     .p1_charge_cmd(p1_charge_cmd),
     .p1_move_cmd(p1_move_cmd),
 
     .p2_jump_cmd(p2_jump_cmd),
-    .p2_punch_cmd(p2_punch_cmd),
-    .p2_punch_val(p2_punch_val),   
+    .p2_punch_cmd(p2_punch_cmd),  
     .p2_charge_cmd(p2_charge_cmd),
     .p2_move_cmd(p2_move_cmd),
 
@@ -141,8 +161,42 @@ game_top top2(
     //testing? maybe keep
     .p1_start_button(p1_start_button),
     .p2_start_button(p2_start_button),
-	 .rst_button(rst_button)
+	 .rst_button(rst_button),
+	 
+	 .winner(winner),
+	 
+	 .p1_hit_p2(p1_hit_p2),
+	 .p2_hit_p1(p2_hit_p1)
 
 );
+
+/*
+SPI_slave s1(
+		.sys_clk(CLOCK_50),
+		.SCLK(SPI_SCLK),
+		.MOSI(SPI_MOSI),
+		.SS(SPI_CS),
+		.MISO(SPI_MISO),
+		.p1_H_move_cmd(p1_move_cmd),
+		.p1_jump_cmd(p1_jump_cmd),
+		.p1_punch_cmd(p1_punch_cmd),
+		.p1_charge_cmd(p1_charge_cmd),
+		.p2_H_move_cmd(p2_move_cmd),
+		.p2_jump_cmd(p2_jump_cmd),
+		.p2_punch_cmd(p2_punch_cmd),
+		.p2_charge_cmd(p2_charge_cmd),
+		.p1_win_in(p1_win),
+		.p2_win_in(p2_win),
+		.p1_hit_p2(p1_hit_p2),
+		.p2_hit_p1(p2_hit_p1),
+		.p1_jump((p1_state) == 3),
+		.p2_jump((p2_state) == 3),
+		.p1_punch((p1_state) == 2),
+		.p2_punch((p2_state) == 2),
+		.p1_charging(p1_charging),
+		.p2_charging(p2_charging)
+	);
+	
+	*/
 
 endmodule

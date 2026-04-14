@@ -13,12 +13,12 @@ module collision_unit(
    output wire p2_hit_p1 
 );
 
-   parameter JUMP = 3, PUNCH = 2;
+   parameter JUMP = 3, PUNCH = 2, JUMP_PUNCH = 4;
    
-   wire p1_jumping = (p1_state == JUMP);
-   wire p1_punching = (p1_state == PUNCH);
-   wire p2_jumping = (p2_state == JUMP);
-   wire p2_punching = (p2_state == PUNCH);
+   wire p1_jumping = (p1_state == JUMP) || (p1_state == JUMP_PUNCH);
+   wire p1_punching = (p1_state == PUNCH)  || (p1_state == JUMP_PUNCH) ;
+   wire p2_jumping = (p2_state == JUMP)  || (p2_state == JUMP_PUNCH) ;
+   wire p2_punching = (p2_state == PUNCH)  || (p2_state == JUMP_PUNCH);
 
    // ========================================================================
    // 1. SPRITE & HURTBOX DEFINITIONS
@@ -126,14 +126,14 @@ module collision_unit(
    wire p1_punch_hits_x = (p1_hitbox_left < p2_hurtbox_right) && (p1_hitbox_right > p2_hurtbox_left);
    wire p1_punch_hits_y = (p1_hitbox_top < p2_hurtbox_bottom) && (p1_hitbox_bottom > p2_hurtbox_top);
   
-   assign p1_hit_p2 = p1_punching && p1_punch_hits_x && p1_punch_hits_y;
+   assign p1_hit_p2 = p1_punching && p1_punch_hits_x && p1_punch_hits_y && !(p1_jumping && p2_jumping);
 
 
    // --- P2 Attacking P1 ---
    wire p2_punch_hits_x = (p2_hitbox_left < p1_hurtbox_right) && (p2_hitbox_right > p1_hurtbox_left);
    wire p2_punch_hits_y = (p2_hitbox_top < p1_hurtbox_bottom) && (p2_hitbox_bottom > p1_hurtbox_top);
   
-   assign p2_hit_p1 = p2_punching && p2_punch_hits_x && p2_punch_hits_y;
+   assign p2_hit_p1 = p2_punching && p2_punch_hits_x && p2_punch_hits_y && !(p1_jumping && p2_jumping);
 
 
 endmodule

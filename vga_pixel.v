@@ -16,9 +16,9 @@ module pixel(
     input [9:0] p1_y, 
     input [3:0] p1_state,  
     input [3:0] p1_frame,   
-    input [5:0] p1_hp, //change bit size
+    input [5:0] p1_hp, 
     input p1_charging,
-    input [4:0] p1_charge, //change bit size
+    input [4:0] p1_charge,
     input p1_dir,
 
     input [9:0] p2_x, 
@@ -27,7 +27,7 @@ module pixel(
     input [3:0] p2_frame,   
     input [5:0] p2_hp,
     input p2_charging,
-    input [4:0] p2_charge, //change bit size
+    input [4:0] p2_charge,
     input p2_dir,
 
     //game info
@@ -92,7 +92,7 @@ module pixel(
 
 //HP bar boxes
 
-    parameter P1_HP_X_START = 21, P2_HP_X_END = 138, HP_Y = 8;
+    parameter P1_HP_X_START = 21, P2_HP_X_END = 139, HP_Y = 12;
     parameter HP_W = 50, HP_H = 3;
 
     wire p1_hp_fill = in_box(logic_h, logic_v, P1_HP_X_START, HP_Y, p1_hp, HP_H);  
@@ -131,7 +131,7 @@ module pixel(
     wire instr_box = in_box(logic_h, logic_v, INSTR_X, INSTR_Y, INSTR_W, INSTR_H);
 
     //pfps
-    parameter PFP_Y = 7, PFP_X1 = 5, PFP_X2 = 141, PFP_W = 14, PFP_H = 17;
+    parameter PFP_Y = 11, PFP_X1 = 5, PFP_X2 = 141, PFP_W = 14, PFP_H = 17;
     wire p1_pfp_box = in_box(logic_h, logic_v, PFP_X1, PFP_Y, PFP_W, PFP_H); 
     wire p2_pfp_box = in_box(logic_h, logic_v, PFP_X2, PFP_Y, PFP_W, PFP_H); 
 
@@ -140,11 +140,16 @@ module pixel(
     wire ko_box = in_box(logic_h, logic_v, KO_X, KO_Y, KO_W, KO_H);
 
     //time...
-    parameter TIME_X = 72, TIME_Y = 8, TIME_W = 16, TIME_H = 3; 
+    parameter TIME_X = 72, TIME_Y = 12, TIME_W = 16, TIME_H = 3; 
     wire time_fill = in_box(logic_h, logic_v, TIME_X, TIME_Y, time_left, TIME_H);  
     wire time_inner = in_box(logic_h, logic_v, TIME_X, TIME_Y, TIME_W, TIME_H);   
     wire time_outer = in_box(logic_h, logic_v, TIME_X, TIME_Y-1, TIME_W, TIME_H+2);   
     wire time_border = time_outer && ~time_inner;
+	 
+	//timesup
+	parameter TIMEUP_Y = 58, TIMEUP_X = 17, TIMEUP_W = 125, TIMEUP_H = 20;
+    wire timeup_box = in_box(logic_h, logic_v, TIMEUP_X, TIMEUP_Y, TIMEUP_W, TIMEUP_H); 
+	 
 
 //Choosing animation base addr
     parameter IDLE = 0, WALK = 1, PUNCH = 2, JUMP = 3; 
@@ -203,8 +208,9 @@ module pixel(
         if (p1_pfp_box && (game_state == GAME || game_state == KO)) elem_rom_addr = (logic_v - PFP_Y) * PFP_W + (logic_h - PFP_X1);
         else if (p2_pfp_box && (game_state == GAME || game_state == KO)) elem_rom_addr = 238 + (logic_v - PFP_Y) * PFP_W + (logic_h - PFP_X2);
         else if (title_box && game_state == START ) elem_rom_addr = 476 + (logic_v - TITLE_Y) * TITLE_W + (logic_h - TITLE_X);
-        else if (ko_box && game_state == KO) elem_rom_addr = 4452 + (logic_v - KO_Y) * KO_W + (logic_h - KO_X);
+        else if (ko_box && game_state == KO && (p1_hp == 0 || p2_hp == 0)) elem_rom_addr = 4452 + (logic_v - KO_Y) * KO_W + (logic_h - KO_X);
         else if (instr_box && game_state == START) elem_rom_addr = 8639 + (logic_v - INSTR_Y) * INSTR_W + (logic_h - INSTR_X);
+        else if (timeup_box && game_state == KO && (time_left == 0)) elem_rom_addr = 9471 + (logic_v - TIMEUP_Y) * TIMEUP_W + (logic_h - TIMEUP_X);
         else elem_rom_addr = 0;
 
     end
@@ -240,9 +246,11 @@ module pixel(
                 if (time_fill) begin final_color_8bit = 8'hD8; end 
                 if (time_border) begin final_color_8bit = 8'hFF; end //white
             end
-            if (game_state == KO) begin 
+            if (game_state == KO && (p1_hp == 0 || p2_hp == 0)) begin 
                 //ko screen
                 if (ko_box && elem_rom_data != TRANSPARENT) begin final_color_8bit = elem_rom_data; end 
+            end else if (game_state == KO && (time_left == 0)) begin
+                if (timeup_box && elem_rom_data != TRANSPARENT) begin final_color_8bit = elem_rom_data; end
             end
 
         end else begin final_color_8bit = 8'h00; end
