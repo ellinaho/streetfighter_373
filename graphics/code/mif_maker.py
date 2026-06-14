@@ -1,0 +1,83 @@
+import sys
+import colorsys
+from PIL import Image
+
+INPUT_IMAGE = "p2pfp.png"  
+OUTPUT_MIF  = "p2pfp.mif"
+
+# magenta is transparent 
+CHROMA_KEY_HEX = "E3"
+
+# prevent halo
+HUE_MIN = 0.72 
+HUE_MAX = 0.95 
+
+# thresholds 
+MIN_SATURATION = 0.15 
+MIN_BRIGHTNESS = 0.15 
+
+def rgb_to_rgb332(r, g, b):
+    r_3bit = round((r * 7) / 255)
+    g_3bit = round((g * 7) / 255)
+    b_2bit = round((b * 3) / 255)
+    
+    # account for rounding errors 
+    if b < 80:
+        b_2bit = 0
+    
+    return f"{(r_3bit << 5) | (g_3bit << 2) | b_2bit:02X}"
+
+def generate_mif():
+    try:
+        img = Image.open(INPUT_IMAGE).convert("RGBA")
+    except FileNotFoundError:
+        print(f"Error: Could not find '{INPUT_IMAGE}'.")
+        sys.exit(1)
+
+    width, height = img.size
+    total_pixels = width * height
+    
+    print(f"--- MIF GENERATOR (HSV HUE TARGETING) ---")
+    print(f"Image: {INPUT_IMAGE} ({width}x{height})")
+
+    with open(OUTPUT_MIF, "w") as f:
+        f.write(f"DEPTH = {total_pixels};\n")
+        f.write("WIDTH = 8;\n")
+        f.write("ADDRESS_RADIX = UNS;\n")
+        f.write("DATA_RADIX = HEX;\n\n")
+        f.write("CONTENT BEGIN\n")
+
+        address = 0
+        removed_count = 0
+
+        for y in range(height):
+            for x in range(width):
+                r, g, b, a = img.getpixel((x, y))
+                
+                # rgv to hsv
+                h, s, v = colorsys.rgb_to_hsv(r/255.0, g/255.0, b/255.0)
+
+                # is transparent?
+                is_transparent_png = (a < 128)
+                
+                # in magenta range?
+                is_magenta_hue = (HUE_MIN < h < HUE_MAX)
+                is_colorful = (s > MIN_SATURATION)
+                is_bright = (v > MIN_BRIGHTNESS)
+
+                if is_transparent_png or (is_magenta_hue and is_colorful and is_bright):
+                    hex_color = CHROMA_KEY_HEX
+                    removed_count += 1
+                else:
+                    hex_color = rgb_to_rgb332(r, g, b)
+                
+                f.write(f"\t{address} : {hex_color};\n")
+                address += 1
+                
+        f.write("END;\n")
+        
+    print(f"Success! Purged {removed_count} magenta/purple pixels.")
+    print(f"File saved as: {OUTPUT_MIF}")
+
+if __name__ == "__main__":
+    generate_mif()
